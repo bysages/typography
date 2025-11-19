@@ -1,0 +1,51 @@
+{
+  "name": "unconfusables",
+  "version": "0.0.0",
+  "description": "Unicode confusable characters detection and string normalization library based on UTS #39",
+  "main": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "scripts": {
+    "dev": "unbuild --stub",
+    "build": "unbuild",
+    "prepack": "pnpm build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bysages/typography.git"
+  },
+  "keywords": [
+    "unicode",
+    "confusables",
+    "typography",
+    "security",
+    "phishing",
+    "homograph",
+    "normalization",
+    "uts39",
+    "string",
+    "detection",
+    "typescript",
+    "safety",
+    "attack",
+    "prevention"
+  ],
+  "author": {
+    "name": "By Sages",
+    "email": "contact@bysages.com",
+    "url": "https://www.bysages.com/"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/bysages/typography/issues"
+  },
+  "homepage": "https://github.com/bysages/typography#readme"
+}
