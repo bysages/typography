@@ -22,4 +22,5 @@ export default defineBuildConfig({
       minify: true,
     },
   },
+  externals: ["hast"],
 });
