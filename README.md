@@ -3,14 +3,15 @@
 ![GitHub](https://img.shields.io/github/license/bysages/typography)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](https://www.contributor-covenant.org/version/2/1/code_of_conduct/)
 
-> Typography toolkit featuring Unicode confusables detection and string normalization
+> Typography toolkit featuring Unicode confusables detection, OCR capabilities, and font glyph manipulation
 
 ## Packages
 
 This is a monorepo that contains the following packages:
 
 - **[unconfusables](./packages/unconfusables/README.md)** - Unicode confusables detection and string normalization library
-- **[unocr](./packages/unocr/README.md)** - Unified OCR library with multi-driver support for Tesseract.js
+- **[unocr](./packages/unocr/README.md)** - Unified OCR library with multi-driver support for Tesseract.js and AI models
+- **[unglyph](./packages/unglyph/README.md)** - Unified font glyph manipulation library with simple API for parsing, creating, and modifying fonts
 
 ## Quick Start
 
@@ -47,6 +48,47 @@ const ocr = createOCRManager({
 const result = await ocr.recognize(imageBuffer);
 const text = toString(result);
 console.log(text); // Extracted text
+
+// Font manipulation with unglyph
+import {
+  parseFont,
+  createFont,
+  createGlyphManager,
+  renderGlyph,
+} from "unglyph";
+
+// Parse existing font
+const font = parseFont(fontBuffer);
+console.log(`Font: ${font.familyName}, ${font.glyphCount} glyphs`);
+
+// Create custom font
+const manager = createGlyphManager();
+manager.add({
+  unicode: 65, // 'A'
+  name: "A",
+  advanceWidth: 600,
+  path: {
+    commands: [
+      { type: "M", x: 300, y: 0 },
+      { type: "L", x: 100, y: 700 },
+      { type: "L", x: 500, y: 700 },
+      { type: "L", x: 300, y: 0 },
+    ],
+  },
+});
+
+const newFont = createFont(manager.list(), {
+  familyName: "MyFont",
+  styleName: "Regular",
+  unitsPerEm: 1000,
+});
+
+// Render glyph to SVG
+const svg = renderGlyph(manager.findByUnicode(65), {
+  size: 100,
+  color: "#2563eb",
+  padding: 20,
+});
 ```
 
 ### Development
@@ -66,6 +108,9 @@ node playground/unconfusables.ts
 
 # Test unocr functionality
 node playground/unocr/tesseract.ts
+
+# Test unglyph functionality
+node playground/unglyph.ts
 ```
 
 ## Contributing

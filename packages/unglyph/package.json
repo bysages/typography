@@ -1,0 +1,68 @@
+{
+  "name": "unglyph",
+  "version": "0.0.0",
+  "description": "Unified font glyph manipulation library with simple API for parsing, creating, and modifying fonts",
+  "main": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "scripts": {
+    "dev": "unbuild --stub",
+    "build": "unbuild",
+    "prepack": "pnpm build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bysages/typography.git"
+  },
+  "keywords": [
+    "font",
+    "glyph",
+    "typography",
+    "opentype",
+    "truetype",
+    "svg",
+    "woff",
+    "woff2",
+    "font-design",
+    "font-creation",
+    "font-parsing",
+    "font-manipulation",
+    "font-generation",
+    "typescript",
+    "vector-graphics",
+    "path-data",
+    "font-editor",
+    "icon-font",
+    "variable-font",
+    "font-toolkit",
+    "font-engine"
+  ],
+  "author": {
+    "name": "By Sages",
+    "email": "contact@bysages.com",
+    "url": "https://www.bysages.com/"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/bysages/typography/issues"
+  },
+  "homepage": "https://github.com/bysages/typography#readme",
+  "dependencies": {
+    "fontkit": "2.0.4",
+    "opentype.js": "1.3.4",
+    "undio": "0.2.0"
+  },
+  "devDependencies": {
+    "@types/fontkit": "^2.0.8",
+    "@types/opentype.js": "1.3.8"
+  }
+}
