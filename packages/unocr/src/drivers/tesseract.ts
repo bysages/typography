@@ -1,6 +1,6 @@
 import Tesseract, { createScheduler } from "tesseract.js";
 import type { Worker } from "tesseract.js";
-import { toBlob } from "undio";
+import { toUint8Array } from "undio";
 import { fromHtml } from "hast-util-from-html";
 import type {
   Driver,
@@ -35,15 +35,7 @@ export default function tesseractDriver(
 
     recognize: async (input: OCRInput): Promise<OCRResult> => {
       const worker = await initializeWorker();
-      let imageLike: Tesseract.ImageLike;
-
-      if (input instanceof Buffer) {
-        // Buffer is directly supported by Tesseract
-        imageLike = input;
-      } else {
-        // Convert other types to Blob
-        imageLike = await toBlob(input);
-      }
+      const imageLike = await toUint8Array(input);
 
       const result = await worker.recognize(imageLike, {}, { hocr: true });
       return fromHtml(result.data.hocr || "");
@@ -74,15 +66,7 @@ export default function tesseractDriver(
         // Process all inputs in parallel with Promise.allSettled
         const results = await Promise.allSettled(
           inputs.map(async (input) => {
-            let imageLike: Tesseract.ImageLike;
-
-            if (input instanceof Buffer) {
-              // Buffer is directly supported by Tesseract
-              imageLike = input;
-            } else {
-              // Convert other types to Blob
-              imageLike = await toBlob(input);
-            }
+            const imageLike = await toUint8Array(input);
 
             const result = await scheduler.addJob(
               "recognize",

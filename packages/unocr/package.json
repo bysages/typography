@@ -1,7 +1,7 @@
 {
   "name": "unocr",
-  "version": "0.0.1",
-  "description": "Unified OCR library with multi-driver support for Tesseract.js, providing structured text extraction using hast-based output format",
+  "version": "0.0.2",
+  "description": "Unified OCR library with multi-driver support for Tesseract.js and AI models, providing structured text extraction using hast-based output format",
   "main": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "files": [
@@ -31,6 +31,9 @@
     "ocr",
     "optical-character-recognition",
     "tesseract",
+    "ai",
+    "artificial-intelligence",
+    "vision",
     "text-recognition",
     "image-processing",
     "computer-vision",
@@ -42,7 +45,11 @@
     "text-extraction",
     "hocr",
     "hast",
-    "structured-data"
+    "structured-data",
+    "multimodal",
+    "gpt",
+    "openai",
+    "vercel-ai"
   ],
   "author": {
     "name": "By Sages",
