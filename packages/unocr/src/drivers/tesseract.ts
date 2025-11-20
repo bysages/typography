@@ -10,7 +10,8 @@ import type {
   OCRResult,
 } from "..";
 
-export type TesseractDriverOptions = Tesseract.WorkerOptions & DriverOptions;
+export type TesseractDriverOptions = Partial<Tesseract.WorkerOptions> &
+  DriverOptions;
 
 export default function tesseractDriver(
   options: TesseractDriverOptions,
@@ -34,7 +35,16 @@ export default function tesseractDriver(
 
     recognize: async (input: OCRInput): Promise<OCRResult> => {
       const worker = await initializeWorker();
-      const imageLike = await toBlob(input);
+      let imageLike: Tesseract.ImageLike;
+
+      if (input instanceof Buffer) {
+        // Buffer is directly supported by Tesseract
+        imageLike = input;
+      } else {
+        // Convert other types to Blob
+        imageLike = await toBlob(input);
+      }
+
       const result = await worker.recognize(imageLike, {}, { hocr: true });
       return fromHtml(result.data.hocr || "");
     },
@@ -64,7 +74,16 @@ export default function tesseractDriver(
         // Process all inputs in parallel with Promise.allSettled
         const results = await Promise.allSettled(
           inputs.map(async (input) => {
-            const imageLike = await toBlob(input);
+            let imageLike: Tesseract.ImageLike;
+
+            if (input instanceof Buffer) {
+              // Buffer is directly supported by Tesseract
+              imageLike = input;
+            } else {
+              // Convert other types to Blob
+              imageLike = await toBlob(input);
+            }
+
             const result = await scheduler.addJob(
               "recognize",
               imageLike,

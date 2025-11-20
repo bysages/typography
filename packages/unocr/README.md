@@ -35,25 +35,27 @@ pnpm add unocr
 ## 🚀 Basic Usage
 
 ```typescript
-import { tesseractDriver } from "unocr/drivers/tesseract";
-import type { Driver } from "unocr";
+import { createOCRManager } from "unocr";
+import tesseractDriver from "unocr/drivers/tesseract";
 
-// Create OCR driver
-const driver: Driver = tesseractDriver({
-  langs: ["eng", "chi_sim"], // English and Chinese
-  logger: (m) => console.log(m), // Progress logging
+// Create OCR manager with Tesseract driver
+const ocr = createOCRManager({
+  driver: tesseractDriver({
+    langs: ["eng", "chi_sim"], // English and Chinese
+    logger: (m) => console.log(m), // Progress logging
+  }),
 });
 
 // Single image OCR
-const result = await driver.recognize(imageBuffer);
+const result = await ocr.recognize(imageBuffer);
 console.log(result); // hast Root object
 
 // Batch OCR with parallel processing
-const results = await driver.recognizes(imageArray, { parallel: 4 });
+const results = await ocr.recognizes(imageArray, { parallel: 4 });
 console.log(results); // Array of hast Root objects
 
 // Clean up
-await driver.dispose();
+await ocr.dispose();
 ```
 
 ## 🔧 Advanced Usage
@@ -61,76 +63,87 @@ await driver.dispose();
 ### 🎯 Custom Driver Configuration
 
 ```typescript
-import { tesseractDriver } from "unocr/drivers/tesseract";
+import { createOCRManager } from "unocr";
+import tesseractDriver from "unocr/drivers/tesseract";
 
 // Advanced Tesseract configuration
-const driver = tesseractDriver({
-  langs: ["eng", "fra", "deu"],
-  oem: 1, // LSTM only
-  corePath: "./tesseract-core",
-  langPath: "./lang-data",
-  cacheMethod: "write",
-  logger: (progress) => {
-    if (progress.status === "recognizing text") {
-      console.log(`Progress: ${progress.progress * 100}%`);
-    }
-  },
+const ocr = createOCRManager({
+  driver: tesseractDriver({
+    langs: ["eng", "fra", "deu"],
+    oem: 1, // LSTM only
+    corePath: "./tesseract-core",
+    langPath: "./lang-data",
+    cacheMethod: "write",
+    logger: (progress) => {
+      if (progress.status === "recognizing text") {
+        console.log(`Progress: ${progress.progress * 100}%`);
+      }
+    },
+  }),
 });
 
-const result = await driver.recognize(image, {
-  rectangle: { top: 100, left: 100, width: 500, height: 300 },
-});
+const result = await ocr.recognize(image);
 ```
 
 ### 📊 Batch Processing with Custom Parallelism
 
 ```typescript
-import { tesseractDriver } from "unocr/drivers/tesseract";
+import { createOCRManager } from "unocr";
+import tesseractDriver from "unocr/drivers/tesseract";
 
-const driver = tesseractDriver({ langs: "eng" });
+const ocr = createOCRManager({
+  driver: tesseractDriver({ langs: "eng" }),
+});
 
 // Process many images efficiently
 const images = [image1, image2, image3, image4, image5];
 
 // Use 2 workers for lower resource usage
-const results = await driver.recognizes(images, { parallel: 2 });
+const results = await ocr.recognizes(images, { parallel: 2 });
 
 // Use maximum parallelism (up to image count)
-const maxResults = await driver.recognizes(images, { parallel: images.length });
+const maxResults = await ocr.recognizes(images, { parallel: images.length });
 
-await driver.dispose();
+await ocr.dispose();
 ```
 
 ### 🌐 Input Format Support
 
 ```typescript
-import { tesseractDriver } from "unocr/drivers/tesseract";
+import { createOCRManager } from "unocr";
+import tesseractDriver from "unocr/drivers/tesseract";
 
-const driver = tesseractDriver({ langs: "eng" });
+const ocr = createOCRManager({
+  driver: tesseractDriver({ langs: "eng" }),
+});
 
 // Various input formats supported via undio
 const imageInputs = [
-  "https://example.com/image.jpg", // URL
-  Buffer.from(imageData), // Buffer
-  Uint8Array.from(imageData), // Uint8Array
-  base64String, // Base64 data URL
-  fileObject, // File/Blob
-  imageElement, // HTMLImageElement
+  "https://example.com/image.jpg", // URL (string)
+  ArrayBuffer, // ArrayBufferLike
+  Uint8Array.from([]), // Uint8Array
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA", // Base64 data URL
+  new Blob(), // Blob
+  new ReadableStream(), // ReadableStream
+  new Response(), // Response
 ];
 
-const results = await driver.recognizes(imageInputs);
-await driver.dispose();
+const results = await ocr.recognizes(imageInputs);
+await ocr.dispose();
 ```
 
 ### 🔍 Working with Hast Output
 
 ```typescript
-import { tesseractDriver } from "unocr/drivers/tesseract";
+import { createOCRManager } from "unocr";
+import tesseractDriver from "unocr/drivers/tesseract";
 import { toHtml } from "hast-util-to-html";
 
-const driver = tesseractDriver({ langs: "eng" });
+const ocr = createOCRManager({
+  driver: tesseractDriver({ langs: "eng" }),
+});
 
-const result = await driver.recognize(image);
+const result = await ocr.recognize(image);
 
 // Convert hast to HTML
 const html = toHtml(result);
@@ -152,59 +165,55 @@ const text = extractText(result);
 console.log(text);
 // "Extracted text content"
 
-await driver.dispose();
+await ocr.dispose();
 ```
 
 ## 📚 API Reference
 
-### 🔧 Driver Interface
+### 🔧 Manager Creation
 
-#### `Driver<OptionsT = DriverOptions>`
+#### `createOCRManager(options: OCRManagerOptions)`
 
-Core interface for OCR drivers with unified API.
+Create an OCR manager with unified API for text recognition.
 
 ```typescript
-interface Driver<OptionsT = DriverOptions> {
-  name?: string;
-  options?: OptionsT;
+import { createOCRManager } from "unocr";
+import tesseractDriver from "unocr/drivers/tesseract";
 
-  recognize: (input: OCRInput) => MaybePromise<OCRResult>;
-  recognizes?: (
-    inputs: OCRInput[],
-    options?: RecognizesOptions,
-  ) => MaybePromise<OCRResult[]>;
-  dispose?: () => MaybePromise<void>;
-}
+const ocr = createOCRManager({
+  driver: tesseractDriver({
+    langs: "eng",
+    logger: console.log,
+  }),
+});
+
+const result = await ocr.recognize(image);
+const results = await ocr.recognizes(images, { parallel: 4 });
+await ocr.dispose();
 ```
 
 ### 🖼️ Input and Output Types
 
 #### `OCRInput`
 
-Universal input type supporting various image formats via undio integration.
+Universal input type supporting various image formats via undio integration:
+
+- `string` - URLs or base64 data URLs
+- `ArrayBufferLike` - ArrayBuffer and similar types
+- `Uint8Array` - Typed array data
+- `Blob` - File/Blob objects
+- `ReadableStream` - Stream data
+- `Response` - Fetch API Response objects
 
 #### `OCRResult`
 
 Structured OCR output in hast format for rich document structure.
 
-### 🚗 Driver Creation
+### 🚗 Available Drivers
 
-#### `tesseractDriver(options?): Driver`
+#### `tesseractDriver(options?: TesseractOptions)`
 
-Create a Tesseract.js-based OCR driver.
-
-```typescript
-import { tesseractDriver } from "unocr/drivers/tesseract";
-
-const driver = tesseractDriver({
-  langs: "eng",
-  oem: 1,
-  logger: console.log,
-});
-
-const result = await driver.recognize(image);
-const results = await driver.recognizes(images, { parallel: 4 });
-```
+Create a Tesseract.js-based OCR driver with advanced configuration options.
 
 ## ⚡ Performance
 
@@ -218,17 +227,19 @@ const results = await driver.recognizes(images, { parallel: 4 });
 ### 🎯 Performance Tips
 
 ```typescript
-// Reuse drivers for multiple operations
-const driver = tesseractDriver({ langs: "eng" });
+// Reuse OCR manager for multiple operations
+const ocr = createOCRManager({
+  driver: tesseractDriver({ langs: "eng" }),
+});
 
 // Batch process when possible
-const results = await driver.recognizes(images, { parallel: 4 });
+const results = await ocr.recognizes(images, { parallel: 4 });
 
 // Configure appropriate parallelism based on hardware
 const cpuCount = navigator.hardwareConcurrency || 4;
-const results = await driver.recognizes(images, { parallel: cpuCount });
+const results = await ocr.recognizes(images, { parallel: cpuCount });
 
-await driver.dispose();
+await ocr.dispose();
 ```
 
 ## 🔧 Configuration
@@ -238,11 +249,15 @@ await driver.dispose();
 Configure parallel processing for batch operations:
 
 ```typescript
+const ocr = createOCRManager({
+  driver: tesseractDriver({ langs: "eng" }),
+});
+
 // Process with 2 workers (conservative)
-await driver.recognizes(images, { parallel: 2 });
+await ocr.recognizes(images, { parallel: 2 });
 
 // Process with 8 workers (high performance)
-await driver.recognizes(images, { parallel: 8 });
+await ocr.recognizes(images, { parallel: 8 });
 ```
 
 ## 🌐 Ecosystem Integration
@@ -250,13 +265,18 @@ await driver.recognizes(images, { parallel: 8 });
 ### 📝 Hast Processing
 
 ```typescript
+import { createOCRManager } from "unocr";
+import tesseractDriver from "unocr/drivers/tesseract";
 import { toHtml } from "hast-util-to-html";
 import { toText } from "hast-util-to-text";
 import { rehype } from "rehype";
 import { unified } from "unified";
 
+const ocr = createOCRManager({
+  driver: tesseractDriver({ langs: "eng" }),
+});
 const processor = rehype();
-const result = await driver.recognize(image);
+const result = await ocr.recognize(image);
 
 // Convert to HTML
 const html = toHtml(result);
@@ -271,25 +291,32 @@ const processed = unified().use(myPlugin).processSync(result);
 ### 🔗 Framework Integration
 
 ```typescript
+import { createOCRManager } from "unocr";
+import tesseractDriver from "unocr/drivers/tesseract";
+
 // Express.js route
 app.post("/ocr", async (req, res) => {
-  const driver = tesseractDriver({ langs: "eng" });
+  const ocr = createOCRManager({
+    driver: tesseractDriver({ langs: "eng" }),
+  });
 
   try {
-    const result = await driver.recognize(req.file.buffer);
+    const result = await ocr.recognize(req.file.buffer);
     res.json({ success: true, result });
   } finally {
-    await driver.dispose();
+    await ocr.dispose();
   }
 });
 
 // Cloudflare Workers
 export default {
   async fetch(request) {
-    const driver = tesseractDriver({ langs: "eng" });
+    const ocr = createOCRManager({
+      driver: tesseractDriver({ langs: "eng" }),
+    });
     const image = await request.arrayBuffer();
-    const result = await driver.recognize(image);
-    await driver.dispose();
+    const result = await ocr.recognize(image);
+    await ocr.dispose();
 
     return new Response(JSON.stringify(result));
   },

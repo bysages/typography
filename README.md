@@ -10,6 +10,7 @@
 This is a monorepo that contains the following packages:
 
 - **[unconfusables](./packages/unconfusables/README.md)** - Unicode confusables detection and string normalization library
+- **[unocr](./packages/unocr/README.md)** - Unified OCR library with multi-driver support for Tesseract.js and PaddleOCR
 
 ## Quick Start
 
@@ -33,6 +34,19 @@ import { getConfusables, normalizeString, areConfusable } from "unconfusables";
 console.log(getConfusables("0")); // { source: "0", target: ["O"], type: "MA" }
 console.log(normalizeString("paypa1")); // "paypal"
 console.log(areConfusable("0l", "Ol")); // true
+
+// OCR with unocr
+import { createOCRManager } from "unocr";
+import tesseractDriver from "unocr/drivers/tesseract";
+import { toString } from "hast-util-to-string";
+
+const ocr = createOCRManager({
+  driver: tesseractDriver({ langs: "eng" }),
+});
+
+const result = await ocr.recognize(imageBuffer);
+const text = toString(result);
+console.log(text); // Extracted text
 ```
 
 ### Development
@@ -49,6 +63,9 @@ pnpm lint
 
 # Test unconfusables functionality
 bun playground/unconfusables.ts
+
+# Test unocr functionality
+bun playground/unocr.ts
 ```
 
 ## Contributing

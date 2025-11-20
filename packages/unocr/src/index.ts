@@ -5,3 +5,6 @@
 
 // Export all types
 export * from "./types";
+
+// Export OCR manager factory
+export * from "./ocr";
