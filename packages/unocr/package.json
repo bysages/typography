@@ -1,0 +1,94 @@
+{
+  "name": "unocr",
+  "version": "0.0.0",
+  "description": "Unified OCR library with multi-driver support for Tesseract.js and PaddleOCR, providing structured text extraction using hast-based output format",
+  "main": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./drivers/*": {
+      "import": "./dist/drivers/*.mjs",
+      "require": "./dist/drivers/*.cjs",
+      "types": "./dist/drivers/*.d.ts"
+    }
+  },
+  "scripts": {
+    "dev": "unbuild --stub",
+    "build": "unbuild",
+    "prepack": "pnpm build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bysages/typography.git"
+  },
+  "keywords": [
+    "ocr",
+    "optical-character-recognition",
+    "tesseract",
+    "paddleocr",
+    "text-recognition",
+    "image-processing",
+    "computer-vision",
+    "multi-language",
+    "typescript",
+    "nodejs",
+    "ocr-engine",
+    "document-analysis",
+    "text-extraction",
+    "hocr",
+    "hast",
+    "structured-data"
+  ],
+  "author": {
+    "name": "By Sages",
+    "email": "contact@bysages.com",
+    "url": "https://www.bysages.com/"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/bysages/typography/issues"
+  },
+  "homepage": "https://github.com/bysages/typography#readme",
+  "dependencies": {
+    "@types/hast": "3.0.4",
+    "hast-util-from-html": "2.0.3",
+    "undio": "0.2.0"
+  },
+  "peerDependencies": {
+    "@paddlejs-models/ocr": "^1.2.4",
+    "@paddlejs/paddlejs-backend-webgl": "^1.2.9",
+    "@paddlejs/paddlejs-core": "^2.2.0",
+    "ai": "^5.0.97",
+    "tesseract.js": "^6.0.1"
+  },
+  "peerDependenciesMeta": {
+    "@paddlejs-models/ocr": {
+      "optional": true
+    },
+    "@paddlejs/paddlejs-backend-webgl": {
+      "optional": true
+    },
+    "@paddlejs/paddlejs-core": {
+      "optional": true
+    },
+    "ai": {
+      "optional": true
+    },
+    "tesseract.js": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@paddlejs-models/ocr": "^1.2.4",
+    "@paddlejs/paddlejs-backend-webgl": "^1.2.9",
+    "@paddlejs/paddlejs-core": "^2.2.0",
+    "ai": "^5.0.97",
+    "tesseract.js": "^6.0.1"
+  }
+}
