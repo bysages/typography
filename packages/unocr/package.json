@@ -1,7 +1,7 @@
 {
   "name": "unocr",
-  "version": "0.0.0",
-  "description": "Unified OCR library with multi-driver support for Tesseract.js and PaddleOCR, providing structured text extraction using hast-based output format",
+  "version": "0.0.1",
+  "description": "Unified OCR library with multi-driver support for Tesseract.js, providing structured text extraction using hast-based output format",
   "main": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "files": [
@@ -31,7 +31,6 @@
     "ocr",
     "optical-character-recognition",
     "tesseract",
-    "paddleocr",
     "text-recognition",
     "image-processing",
     "computer-vision",
@@ -61,22 +60,10 @@
     "undio": "0.2.0"
   },
   "peerDependencies": {
-    "@paddlejs-models/ocr": "^1.2.4",
-    "@paddlejs/paddlejs-backend-webgl": "^1.2.9",
-    "@paddlejs/paddlejs-core": "^2.2.0",
     "ai": "^5.0.97",
     "tesseract.js": "^6.0.1"
   },
   "peerDependenciesMeta": {
-    "@paddlejs-models/ocr": {
-      "optional": true
-    },
-    "@paddlejs/paddlejs-backend-webgl": {
-      "optional": true
-    },
-    "@paddlejs/paddlejs-core": {
-      "optional": true
-    },
     "ai": {
       "optional": true
     },
@@ -85,9 +72,6 @@
     }
   },
   "devDependencies": {
-    "@paddlejs-models/ocr": "^1.2.4",
-    "@paddlejs/paddlejs-backend-webgl": "^1.2.9",
-    "@paddlejs/paddlejs-core": "^2.2.0",
     "ai": "^5.0.97",
     "tesseract.js": "^6.0.1"
   }

@@ -43,15 +43,6 @@ importers:
         specifier: 0.2.0
         version: 0.2.0
     devDependencies:
-      "@paddlejs-models/ocr":
-        specifier: ^1.2.4
-        version: 1.2.4
-      "@paddlejs/paddlejs-backend-webgl":
-        specifier: ^1.2.9
-        version: 1.2.9
-      "@paddlejs/paddlejs-core":
-        specifier: ^2.2.0
-        version: 2.2.0
       ai:
         specifier: ^5.0.97
         version: 5.0.97(zod@4.1.12)
@@ -70,6 +61,9 @@ importers:
       unconfusables:
         specifier: workspace:*
         version: link:../packages/unconfusables
+      unocr:
+        specifier: workspace:*
+        version: link:../packages/unocr
 
 packages:
   "@ai-sdk/gateway@2.0.12":
@@ -683,30 +677,6 @@ packages:
       }
     cpu: [x64]
     os: [win32]
-
-  "@paddlejs-mediapipe/opencv@0.0.4":
-    resolution:
-      {
-        integrity: sha512-bfwixZPKGFh7JcAtLToTBmBiu/nyQjVrm0gf/pn92apHJQEYyhnAFGvgDubmqQbijmtP2/fbOMR4CuSSlq2g8w==,
-      }
-
-  "@paddlejs-models/ocr@1.2.4":
-    resolution:
-      {
-        integrity: sha512-mdvaWXQaCmLULEvCxcsUzHtDgmoDVzJX2LsqyMmJxSzfhgrtnscF1eLiLbaouDwg6n08koXP0BCzeB+0oAv/AQ==,
-      }
-
-  "@paddlejs/paddlejs-backend-webgl@1.2.9":
-    resolution:
-      {
-        integrity: sha512-cVDa0/Wbw2EyfsYqdYUPhFeqKsET79keEUWjyhYQmQkJfWg8j1qdR6yp7g6nx9qAGrqFvwuj1s0EqkYA1dok6A==,
-      }
-
-  "@paddlejs/paddlejs-core@2.2.0":
-    resolution:
-      {
-        integrity: sha512-P3rPkF9fFHtq8uSte5gA7fJQwBNl9Ytsvj6aTcfQSsirnBO/HxMNu0gJyh7+lItvEtF92PR15eI0eOwJYfZDhQ==,
-      }
 
   "@prettier/plugin-oxc@0.0.4":
     resolution:
@@ -2792,18 +2762,6 @@ snapshots:
 
   "@oxlint/win32-x64@1.28.0":
     optional: true
-
-  "@paddlejs-mediapipe/opencv@0.0.4": {}
-
-  "@paddlejs-models/ocr@1.2.4":
-    dependencies:
-      "@paddlejs-mediapipe/opencv": 0.0.4
-      "@paddlejs/paddlejs-backend-webgl": 1.2.9
-      "@paddlejs/paddlejs-core": 2.2.0
-
-  "@paddlejs/paddlejs-backend-webgl@1.2.9": {}
-
-  "@paddlejs/paddlejs-core@2.2.0": {}
 
   "@prettier/plugin-oxc@0.0.4":
     dependencies:

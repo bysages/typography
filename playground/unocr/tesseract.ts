@@ -1,7 +1,7 @@
 import { ImageResponse } from "@vercel/og";
 import { toString } from "hast-util-to-string";
-import { createOCRManager } from "../packages/unocr/src/ocr";
-import tesseractDriver from "../packages/unocr/src/drivers/tesseract";
+import { createOCRManager } from "unocr";
+import tesseractDriver from "../../packages/unocr/src/drivers/tesseract";
 
 /**
  * Generate test image using Vercel OG and then test OCR recognition

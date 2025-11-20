@@ -10,7 +10,7 @@
 This is a monorepo that contains the following packages:
 
 - **[unconfusables](./packages/unconfusables/README.md)** - Unicode confusables detection and string normalization library
-- **[unocr](./packages/unocr/README.md)** - Unified OCR library with multi-driver support for Tesseract.js and PaddleOCR
+- **[unocr](./packages/unocr/README.md)** - Unified OCR library with multi-driver support for Tesseract.js
 
 ## Quick Start
 
@@ -62,10 +62,10 @@ pnpm build
 pnpm lint
 
 # Test unconfusables functionality
-bun playground/unconfusables.ts
+node playground/unconfusables.ts
 
 # Test unocr functionality
-bun playground/unocr.ts
+node playground/unocr/tesseract.ts
 ```
 
 ## Contributing

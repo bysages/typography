@@ -5,11 +5,11 @@
 ![npm license](https://img.shields.io/npm/l/unocr)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](https://www.contributor-covenant.org/version/2/1/code_of_conduct/)
 
-Unified OCR library with multi-driver support for Tesseract.js and PaddleOCR, providing structured text extraction using hast-based output format.
+Unified OCR library with multi-driver support for Tesseract.js, providing structured text extraction using hast-based output format.
 
 ## ✨ Features
 
-- 🔍 **Multi-Engine Support**: Tesseract.js and PaddleOCR drivers with unified interface
+- 🔍 **Multi-Engine Support**: Tesseract.js drivers with unified interface
 - 📝 **Structured Output**: Hast-based OCR results for rich document structure
 - 🌐 **Universal Input**: Support for various image formats via undio integration
 - ⚡️ **High Performance**: Parallel processing with scheduler support
@@ -326,7 +326,6 @@ export default {
 ## 🔗 Related
 
 - [Tesseract.js](https://github.com/naptha/tesseract.js) - JavaScript OCR library
-- [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) - OCR toolkit
 - [undio](https://github.com/unjs/undio) - Universal I/O library
 - [Hast](https://github.com/syntax-tree/hast) - HTML Abstract Syntax Tree
 - [unjs](https://unjs.io/) - JavaScript ecosystem

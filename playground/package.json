@@ -2,6 +2,7 @@
   "dependencies": {
     "@vercel/og": "0.8.5",
     "hast-util-to-string": "3.0.1",
-    "unconfusables": "workspace:*"
+    "unconfusables": "workspace:*",
+    "unocr": "workspace:*"
   }
 }
