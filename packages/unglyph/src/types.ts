@@ -1,17 +1,16 @@
 import type { DataType } from "undio";
 
-// Re-export DataType for convenience
-export type { DataType } from "undio";
-
 /**
  * Font input types
  */
 export type FontInput = DataType;
 
 /**
- * Glyph data structure
+ * Unified Glyph interface - our primary glyph data structure
  */
 export interface GlyphData {
+  /** Glyph index in font */
+  index: number;
   /** Unicode character or code point */
   unicode: string | number;
   /** Optional glyph name */
@@ -22,34 +21,50 @@ export interface GlyphData {
   path: PathData;
   /** Left side bearing (optional) */
   leftSideBearing?: number;
-  /** Right side bearing (optional) */
-  rightSideBearing?: number;
+  /** Unicode code points (for ligatures) */
+  codePoints?: number[];
+  /** Is mark glyph */
+  isMark?: boolean;
+  /** Is ligature glyph */
+  isLigature?: boolean;
 }
 
 /**
- * Path commands
+ * Path commands (unified format)
  */
 export type PathCommand =
-  | { type: "M"; x: number; y: number } // MoveTo
-  | { type: "L"; x: number; y: number } // LineTo
-  | { type: "Q"; cx: number; cy: number; x: number; y: number } // QuadraticCurve
+  | { type: "move"; x: number; y: number }
+  | { type: "line"; x: number; y: number }
+  | { type: "quadratic"; cx: number; cy: number; x: number; y: number }
   | {
-      type: "C";
+      type: "cubic";
       cx1: number;
       cy1: number;
       cx2: number;
       cy2: number;
       x: number;
       y: number;
-    } // CubicCurve
-  | { type: "Z" }; // ClosePath
+    }
+  | { type: "close" };
 
 /**
  * Path data structure
  */
 export interface PathData {
   commands: PathCommand[];
-  bounds?: { minX: number; minY: number; maxX: number; maxY: number };
+  bounds?: BoundingBox;
+}
+
+/**
+ * Bounding box
+ */
+export interface BoundingBox {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+  width: number;
+  height: number;
 }
 
 /**
@@ -73,13 +88,19 @@ export interface FontOptions {
 }
 
 /**
- * Rendering options
+ * Base rendering options
  */
-export interface RenderOptions {
+export interface BaseRenderOptions {
   /** Size in pixels */
   size: number;
   /** Color */
   color?: string;
+}
+
+/**
+ * SVG rendering options
+ */
+export interface SVGRenderOptions extends BaseRenderOptions {
   /** Background color */
   backgroundColor?: string;
   /** Padding */
@@ -91,12 +112,46 @@ export interface RenderOptions {
 }
 
 /**
+ * Canvas rendering options
+ */
+export interface CanvasRenderOptions extends BaseRenderOptions {
+  /** Canvas 2D rendering context */
+  ctx: any; // Compatible with both browser Canvas and @napi-rs/canvas
+  /** X position */
+  x: number;
+  /** Y position */
+  y: number;
+}
+
+/**
+ * Image rendering options
+ */
+export interface ImageRenderOptions extends BaseRenderOptions {
+  /** Background color */
+  backgroundColor?: string;
+  /** Padding */
+  padding?: number;
+  /** Image format */
+  format: "png" | "jpeg" | "webp";
+  /** Image quality (for JPEG/WebP) */
+  quality?: number;
+}
+
+/**
+ * Unified render options type
+ */
+export type RenderOptions =
+  | SVGRenderOptions
+  | CanvasRenderOptions
+  | ImageRenderOptions;
+
+/**
  * Batch glyph operation
  */
 export type GlyphOperation =
   | { type: "add"; glyph: GlyphData }
-  | { type: "update"; unicode: string | number; updates: Partial<GlyphData> }
-  | { type: "remove"; unicode: string | number };
+  | { type: "update"; index: number; updates: Partial<GlyphData> }
+  | { type: "remove"; index: number };
 
 /**
  * Font export format
@@ -104,20 +159,37 @@ export type GlyphOperation =
 export type FontFormat = "ttf" | "otf" | "woff" | "woff2";
 
 /**
- * Parse result
+ * Font generation options
  */
-export interface ParseResult {
-  glyphs: GlyphData[];
-  format: string;
-  familyName: string;
-  glyphCount: number;
+export interface FontGenerateOptions {
+  /** Export format */
+  format?: FontFormat;
+  /** Font family name (optional, uses font's family name if not provided) */
+  familyName?: string;
+  /** Style name */
+  styleName?: string;
+  /** Units per em (optional, uses font's value if not provided) */
+  unitsPerEm?: number;
+  /** Ascender height (optional, uses font's value if not provided) */
+  ascender?: number;
+  /** Descender depth (optional, uses font's value if not provided) */
+  descender?: number;
 }
 
 /**
- * Export result
+ * Unified Font Data - data structure for font information
  */
-export interface ExportResult {
-  data: ArrayBuffer;
-  format: FontFormat;
-  size: number;
+export interface FontData {
+  // Font metadata (from parsed fonts)
+  familyName?: string;
+  format?: string;
+  unitsPerEm?: number;
+  ascent?: number;
+  descent?: number;
+  lineGap?: number;
+  capHeight?: number;
+  xHeight?: number;
+
+  // Glyph data
+  glyphs: GlyphData[];
 }

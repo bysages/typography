@@ -38,18 +38,20 @@ pnpm add unglyph
 ### Font Parsing
 
 ```typescript
-import { parseFont } from "unglyph";
+import { parseFont, type FontData } from "unglyph";
 
 // Parse font file
-const font = parseFont(fontBuffer);
+const font: FontData = parseFont(fontBuffer);
 
 console.log(`Font: ${font.familyName}`);
 console.log(`Format: ${font.format}`);
-console.log(`Glyphs: ${font.glyphCount}`);
+console.log(`Units per Em: ${font.unitsPerEm}`);
 
 // Access glyph data
 const glyphA = font.glyphs.find((g) => g.unicode === 65);
-console.log(`Glyph A: ${glyphA?.name}, advanceWidth: ${glyphA?.advanceWidth}`);
+console.log(
+  `Glyph A: ${glyphA?.name}, index: ${glyphA?.index}, advanceWidth: ${glyphA?.advanceWidth}`,
+);
 ```
 
 ### Font Creation
@@ -58,8 +60,11 @@ console.log(`Glyph A: ${glyphA?.name}, advanceWidth: ${glyphA?.advanceWidth}`);
 import {
   createFont,
   createGlyphManager,
+  generateFont,
   type FontOptions,
+  type FontData,
   type GlyphData,
+  type PathCommand,
 } from "unglyph";
 
 // Create glyph manager
@@ -67,22 +72,23 @@ const manager = createGlyphManager();
 
 // Add custom glyphs
 const glyphA: GlyphData = {
+  index: 1,
   unicode: 65, // 'A'
   name: "A",
   advanceWidth: 600,
   path: {
     commands: [
-      { type: "M", x: 300, y: 0 },
-      { type: "L", x: 100, y: 700 },
-      { type: "L", x: 500, y: 700 },
-      { type: "L", x: 300, y: 0 },
-    ],
+      { type: "move", x: 300, y: 0 },
+      { type: "line", x: 100, y: 700 },
+      { type: "line", x: 500, y: 700 },
+      { type: "line", x: 300, y: 0 },
+    ] as PathCommand[],
   },
 };
 
 manager.add(glyphA);
 
-// Create font
+// Create FontData
 const fontOptions: FontOptions = {
   familyName: "MyFont",
   styleName: "Regular",
@@ -91,8 +97,12 @@ const fontOptions: FontOptions = {
   descender: -200,
 };
 
-const font = createFont(manager.list(), fontOptions);
-// font.data contains the font file buffer (OTF format)
+const fontData: FontData = createFont(manager.list(), fontOptions);
+
+// Generate font file (returns Uint8Array)
+const fontBytes = generateFont(fontData, { format: "otf" });
+// Save to file
+fs.writeFileSync("myfont.otf", fontBytes);
 ```
 
 ### Glyph Management
@@ -113,8 +123,8 @@ const removed = manager.remove(65);
 manager.addGlyphs([glyph1, glyph2, glyph3]);
 manager.batch([
   { type: "add", glyph: newGlyph },
-  { type: "update", unicode: 66, updates: { advanceWidth: 650 } },
-  { type: "remove", unicode: 67 },
+  { type: "update", index: 2, updates: { advanceWidth: 650 } },
+  { type: "remove", index: 3 },
 ]);
 
 // Find operations
@@ -153,12 +163,14 @@ import {
   parseFont,
   createGlyphManager,
   createFont,
+  generateFont,
   renderGlyph,
+  type FontData,
 } from "unglyph";
 
 async function processFont(inputBuffer: ArrayBuffer) {
   // 1. Parse existing font
-  const originalFont = parseFont(inputBuffer);
+  const originalFont: FontData = parseFont(inputBuffer);
 
   // 2. Create manager and copy glyphs
   const manager = createGlyphManager(originalFont.glyphs);
@@ -174,8 +186,8 @@ async function processFont(inputBuffer: ArrayBuffer) {
     },
   }));
 
-  // 4. Create new font with modifications
-  const newFont = createFont(modifiedGlyphs, {
+  // 4. Create new font data with modifications
+  const newFontData: FontData = createFont(modifiedGlyphs, {
     familyName: `${originalFont.familyName} Bold`,
     styleName: "Bold",
     unitsPerEm: 1000,
@@ -183,7 +195,8 @@ async function processFont(inputBuffer: ArrayBuffer) {
     descender: -200,
   });
 
-  return newFont;
+  // 5. Generate font file
+  return generateFont(newFontData, { format: "otf" });
 }
 ```
 
@@ -200,6 +213,7 @@ function createIconFont(
   // Add icons as glyphs
   icons.forEach((icon) => {
     const glyph: GlyphData = {
+      index: icon.unicode,
       unicode: icon.unicode,
       name: icon.name,
       advanceWidth: 1000,
@@ -210,14 +224,17 @@ function createIconFont(
     manager.add(glyph);
   });
 
-  // Create icon font
-  return createFont(manager.list(), {
+  // Create icon font data
+  const fontData = createFont(manager.list(), {
     familyName: "Custom Icons",
     styleName: "Regular",
     unitsPerEm: 1000,
     ascender: 850,
     descender: -150,
   });
+
+  // Generate icon font file
+  return generateFont(fontData, { format: "otf" });
 }
 ```
 
@@ -225,13 +242,17 @@ function createIconFont(
 
 ### Core Functions
 
-#### `parseFont(input: FontInput): ParseResult`
+#### `parseFont(input: FontInput): FontData`
 
-Parse font file and extract glyph information.
+Parse font file and extract glyph information. Returns unified FontData structure.
 
-#### `createFont(glyphs: GlyphData[], options: FontOptions): ExportResult`
+#### `createFont(glyphs: GlyphData[], options: FontOptions): FontData`
 
-Create font from glyph data array.
+Create font data from glyph data array.
+
+#### `generateFont(fontData: FontData, options?: FontGenerateOptions): Uint8Array`
+
+Generate font file from FontData. Returns file buffer (OTF, TTF, etc.).
 
 #### `renderGlyph(glyph: GlyphData, options: RenderOptions): string`
 
@@ -264,12 +285,42 @@ Manage font glyphs with CRUD operations:
 
 ```typescript
 interface GlyphData {
+  index: number; // Glyph index in font
   unicode: string | number; // Unicode character or code point
   name?: string; // Optional glyph name
   advanceWidth: number; // Advance width
   leftSideBearing?: number; // Left side bearing
   rightSideBearing?: number; // Right side bearing
   path: PathData; // Path commands
+}
+```
+
+#### `FontData`
+
+```typescript
+interface FontData {
+  familyName?: string; // Font family name
+  format?: string; // Font format (TTF, OTF, etc.)
+  unitsPerEm?: number; // Units per em
+  ascent?: number; // Ascender height
+  descent?: number; // Descender depth
+  lineGap?: number; // Line gap
+  capHeight?: number; // Cap height
+  xHeight?: number; // X-height
+  glyphs: GlyphData[]; // Array of glyphs
+}
+```
+
+#### `FontGenerateOptions`
+
+```typescript
+interface FontGenerateOptions {
+  format?: "ttf" | "otf" | "woff" | "woff2"; // Export format (default: "otf")
+  familyName?: string; // Font family name (uses font's name if not provided)
+  styleName?: string; // Style name (default: "Regular")
+  unitsPerEm?: number; // Units per em (uses font's value if not provided)
+  ascender?: number; // Ascender height (uses font's value if not provided)
+  descender?: number; // Descender depth (uses font's value if not provided)
 }
 ```
 

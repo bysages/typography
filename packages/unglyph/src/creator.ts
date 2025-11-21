@@ -1,36 +1,11 @@
 import * as opentype from "opentype.js";
-import type { GlyphData, FontOptions, ExportResult } from "./types";
-
-/**
- * Convert unglyph PathCommand to opentype.Path
- */
-function convertToOpenTypePath(
-  commands: GlyphData["path"]["commands"],
-): opentype.Path {
-  const path = new opentype.Path();
-
-  for (const cmd of commands) {
-    switch (cmd.type) {
-      case "M":
-        path.moveTo(cmd.x, cmd.y);
-        break;
-      case "L":
-        path.lineTo(cmd.x, cmd.y);
-        break;
-      case "Q":
-        path.quadraticCurveTo(cmd.cx, cmd.cy, cmd.x, cmd.y);
-        break;
-      case "C":
-        path.bezierCurveTo(cmd.cx1, cmd.cy1, cmd.cx2, cmd.cy2, cmd.x, cmd.y);
-        break;
-      case "Z":
-        path.close();
-        break;
-    }
-  }
-
-  return path;
-}
+import type {
+  GlyphData,
+  FontOptions,
+  FontData,
+  FontGenerateOptions,
+} from "./types";
+import { convertToOpentypePath } from "./utils";
 
 /**
  * Create font from glyph data using opentype.js
@@ -38,7 +13,32 @@ function convertToOpenTypePath(
 export function createFont(
   glyphs: GlyphData[],
   options: FontOptions,
-): ExportResult {
+): FontData {
+  return {
+    familyName: options.familyName,
+    unitsPerEm: options.unitsPerEm || 1000,
+    ascent: options.ascender || 800,
+    descent: options.descender || -200,
+    glyphs,
+  };
+}
+
+/**
+ * Generate font file from FontData
+ */
+export function generateFont(
+  fontData: FontData,
+  options: FontGenerateOptions = {},
+): Uint8Array {
+  const {
+    format = "otf",
+    familyName = fontData.familyName || "Untitled Font",
+    styleName = "Regular",
+    unitsPerEm = fontData.unitsPerEm || 1000,
+    ascender = fontData.ascent || 800,
+    descender = fontData.descent || -200,
+  } = options;
+
   // Create required .notdef glyph
   const notdefGlyph = new opentype.Glyph({
     name: ".notdef",
@@ -48,7 +48,9 @@ export function createFont(
   });
 
   // Create space glyph if not present
-  const hasSpace = glyphs.some((g) => g.unicode === 32 || g.unicode === " ");
+  const hasSpace = fontData.glyphs.some(
+    (g) => g.unicode === 32 || g.unicode === " ",
+  );
   const otGlyphs: opentype.Glyph[] = [notdefGlyph];
 
   if (!hasSpace) {
@@ -62,14 +64,14 @@ export function createFont(
     );
   }
 
-  // Convert our glyph data to opentype glyphs
-  for (const glyph of glyphs) {
+  // Convert our unified glyphs to opentype glyphs
+  for (const glyph of fontData.glyphs) {
     // Skip space and .notdef as they're already handled
     if (glyph.unicode === 32 || glyph.unicode === " " || glyph.unicode === 0) {
       continue;
     }
 
-    const path = convertToOpenTypePath(glyph.path.commands);
+    const path = convertToOpentypePath(glyph.path);
     const unicodeValue =
       typeof glyph.unicode === "string"
         ? glyph.unicode.charCodeAt(0)
@@ -87,20 +89,27 @@ export function createFont(
 
   // Create the font
   const font = new opentype.Font({
-    familyName: options.familyName,
-    styleName: options.styleName || "Regular",
-    unitsPerEm: options.unitsPerEm || 1000,
-    ascender: options.ascender || 800,
-    descender: options.descender || -200,
+    familyName,
+    styleName,
+    unitsPerEm,
+    ascender,
+    descender,
     glyphs: otGlyphs,
   });
 
-  // Convert to ArrayBuffer
-  const buffer = font.toArrayBuffer();
-
-  return {
-    data: buffer,
-    format: "otf",
-    size: buffer.byteLength,
-  };
+  // Convert to buffer based on format
+  switch (format) {
+    case "ttf":
+    case "otf":
+      const arrayBuffer = font.toArrayBuffer();
+      return new Uint8Array(arrayBuffer);
+    case "woff":
+      // For WOFF, we'd need additional library support
+      throw new Error("WOFF format not yet implemented");
+    case "woff2":
+      // For WOFF2, we'd need additional library support
+      throw new Error("WOFF2 format not yet implemented");
+    default:
+      throw new Error(`Unsupported format: ${format as string}`);
+  }
 }

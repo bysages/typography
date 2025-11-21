@@ -10,14 +10,14 @@ export function createGlyphManager(
 }
 
 /**
- * Glyph manager for CRUD operations
+ * Glyph manager for CRUD operations using unified GlyphData
  */
 export class GlyphManager {
-  private glyphs: Map<string | number, GlyphData> = new Map();
+  private glyphs: Map<number, GlyphData> = new Map();
 
   constructor(initialGlyphs: GlyphData[] = []) {
     for (const glyph of initialGlyphs) {
-      this.glyphs.set(glyph.unicode, glyph);
+      this.glyphs.set(glyph.index, glyph);
     }
   }
 
@@ -25,33 +25,33 @@ export class GlyphManager {
    * Add a glyph
    */
   add(glyph: GlyphData): void {
-    this.glyphs.set(glyph.unicode, glyph);
+    this.glyphs.set(glyph.index, glyph);
   }
 
   /**
-   * Get a glyph by unicode
+   * Get a glyph by id
    */
-  get(unicode: string | number): GlyphData | undefined {
-    return this.glyphs.get(unicode);
+  get(id: number): GlyphData | undefined {
+    return this.glyphs.get(id);
   }
 
   /**
    * Update a glyph
    */
-  update(unicode: string | number, updates: Partial<GlyphData>): boolean {
-    const existing = this.glyphs.get(unicode);
+  update(id: number, updates: Partial<GlyphData>): boolean {
+    const existing = this.glyphs.get(id);
     if (!existing) return false;
 
     const updated = { ...existing, ...updates };
-    this.glyphs.set(unicode, updated);
+    this.glyphs.set(id, updated);
     return true;
   }
 
   /**
    * Remove a glyph
    */
-  remove(unicode: string | number): boolean {
-    return this.glyphs.delete(unicode);
+  remove(id: number): boolean {
+    return this.glyphs.delete(id);
   }
 
   /**
@@ -71,8 +71,8 @@ export class GlyphManager {
   /**
    * Check if glyph exists
    */
-  has(unicode: string | number): boolean {
-    return this.glyphs.has(unicode);
+  has(id: number): boolean {
+    return this.glyphs.has(id);
   }
 
   /**
@@ -85,10 +85,10 @@ export class GlyphManager {
           this.add(op.glyph);
           break;
         case "update":
-          this.update(op.unicode, op.updates);
+          this.update(op.index, op.updates);
           break;
         case "remove":
-          this.remove(op.unicode);
+          this.remove(op.index);
           break;
       }
     }
@@ -102,10 +102,38 @@ export class GlyphManager {
   }
 
   /**
-   * Find glyph by unicode
+   * Find glyph by unicode (checks unicode property or codePoints)
    */
   findByUnicode(unicode: string | number): GlyphData | undefined {
-    return this.glyphs.get(unicode);
+    const codePoint =
+      typeof unicode === "string" ? unicode.charCodeAt(0) : unicode;
+
+    for (const glyph of this.glyphs.values()) {
+      // Check unicode property
+      if (typeof glyph.unicode === "string") {
+        if (glyph.unicode.charCodeAt(0) === codePoint) return glyph;
+      } else {
+        if (glyph.unicode === codePoint) return glyph;
+      }
+
+      // Check codePoints array
+      if (glyph.codePoints && glyph.codePoints.includes(codePoint)) {
+        return glyph;
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * Find glyph by name
+   */
+  findByName(name: string): GlyphData | undefined {
+    for (const glyph of this.glyphs.values()) {
+      if (glyph.name === name) {
+        return glyph;
+      }
+    }
+    return undefined;
   }
 
   /**

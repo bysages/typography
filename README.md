@@ -53,35 +53,40 @@ console.log(text); // Extracted text
 import {
   parseFont,
   createFont,
+  generateFont,
   createGlyphManager,
   renderGlyph,
 } from "unglyph";
 
 // Parse existing font
 const font = parseFont(fontBuffer);
-console.log(`Font: ${font.familyName}, ${font.glyphCount} glyphs`);
+console.log(`Font: ${font.familyName}, ${font.glyphs.length} glyphs`);
 
 // Create custom font
 const manager = createGlyphManager();
 manager.add({
+  index: 1,
   unicode: 65, // 'A'
   name: "A",
   advanceWidth: 600,
   path: {
     commands: [
-      { type: "M", x: 300, y: 0 },
-      { type: "L", x: 100, y: 700 },
-      { type: "L", x: 500, y: 700 },
-      { type: "L", x: 300, y: 0 },
+      { type: "move", x: 300, y: 0 },
+      { type: "line", x: 100, y: 700 },
+      { type: "line", x: 500, y: 700 },
+      { type: "line", x: 300, y: 0 },
     ],
   },
 });
 
-const newFont = createFont(manager.list(), {
+const fontData = createFont(manager.list(), {
   familyName: "MyFont",
   styleName: "Regular",
   unitsPerEm: 1000,
 });
+
+// Generate font file
+const fontBytes = generateFont(fontData, { format: "otf" });
 
 // Render glyph to SVG
 const svg = renderGlyph(manager.findByUnicode(65), {
