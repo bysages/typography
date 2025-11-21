@@ -17,7 +17,7 @@ export function parseFont(input: FontInput): FontData {
   const font = "fonts" in fontResult ? fontResult.fonts[0] : fontResult;
 
   const fontData: FontData = {
-    familyName: font.familyName,
+    familyName: font.familyName || font.postscriptName || "Unknown",
     format: font.type,
     unitsPerEm: font.unitsPerEm,
     ascent: font.ascent,
@@ -25,28 +25,27 @@ export function parseFont(input: FontInput): FontData {
     lineGap: font.lineGap,
     capHeight: font.capHeight,
     xHeight: font.xHeight,
+    // Additional metadata from fontkit
+    version: font.version ? font.version.toString() : undefined,
+    copyright: font.copyright || undefined,
+    weight: font["OS/2"]?.usWeightClass || undefined,
+    italic: font.italicAngle !== 0,
+    styleName: font.subfamilyName || "Regular",
     glyphs: [],
   };
 
-  // Extract specific glyphs we need (A, B, C, space)
-  const targetChars = [
-    { char: "A", unicode: 65 },
-    { char: "B", unicode: 66 },
-    { char: "C", unicode: 67 },
-    { char: " ", unicode: 32 },
-  ];
-
-  for (const { unicode } of targetChars) {
-    const fontkitGlyph = font.glyphForCodePoint(unicode);
+  // Extract all glyphs from the font's character set
+  // This ensures we only get glyphs that actually have Unicode mappings
+  for (const codePoint of font.characterSet) {
+    const fontkitGlyph = font.glyphForCodePoint(codePoint);
 
     if (fontkitGlyph) {
       // Convert fontkit glyph to our unified format
-      // Space characters may not have path commands, which is normal
       const glyph = convertFromFontkitGlyph(
         fontkitGlyph,
         fontkitGlyph.id,
         font.ascent,
-        unicode,
+        codePoint,
       );
       fontData.glyphs.push(glyph);
     }
