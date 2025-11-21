@@ -79,7 +79,7 @@
     }
   },
   "devDependencies": {
-    "ai": "^5.0.97",
+    "ai": "^5.0.98",
     "tesseract.js": "^6.0.1"
   }
 }
