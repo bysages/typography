@@ -1,6 +1,6 @@
 {
   "name": "unglyph",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Unified font glyph manipulation library with simple API for parsing, creating, and modifying fonts",
   "main": "dist/index.mjs",
   "types": "dist/index.d.ts",

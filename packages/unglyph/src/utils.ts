@@ -79,7 +79,7 @@ function convertFromFontkitPath(
   ascent?: number,
 ): PathData {
   const commands: PathCommand[] = [];
-  const baseline = ascent || 1900; // Use ascent as baseline for coordinate conversion
+  const baseline = ascent || 0; // Use ascent as baseline for coordinate conversion
 
   for (const cmd of fontkitPath.commands) {
     switch (cmd.command) {

@@ -189,6 +189,11 @@ export interface FontData {
   lineGap?: number;
   capHeight?: number;
   xHeight?: number;
+  version?: string;
+  copyright?: string;
+  weight?: number;
+  italic?: boolean;
+  styleName?: string;
 
   // Glyph data
   glyphs: GlyphData[];
