@@ -1,6 +1,6 @@
 {
   "name": "unocr",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Unified OCR library with multi-driver support for Tesseract.js and AI models, providing structured text extraction using hast-based output format",
   "main": "dist/index.mjs",
   "types": "dist/index.d.ts",

@@ -60,6 +60,7 @@ async function testOCRWithOGImage() {
     const ocr = createOCRManager({
       driver: aiDriver({
         model: openai(modelName),
+        outputType: "hast",
       }),
     });
 
@@ -144,6 +145,7 @@ async function testBatchProcessing() {
     const ocr = createOCRManager({
       driver: aiDriver({
         model: openai(modelName),
+        outputType: "hast",
       }),
     });
 
@@ -218,6 +220,7 @@ async function testCustomSystemPrompt() {
       driver: aiDriver({
         model: openai(modelName),
         system: customPrompt,
+        outputType: "hast",
       }),
     });
 

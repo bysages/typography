@@ -8,23 +8,26 @@ import type {
   RecognizesOptions,
   OCRInput,
   OCRResult,
+  OutputType,
+  Root,
 } from "..";
 
-export type TesseractDriverOptions = Partial<Tesseract.WorkerOptions> &
-  DriverOptions;
+export type TesseractDriverOptions<TOutputType extends OutputType> =
+  Partial<Tesseract.WorkerOptions> & DriverOptions<TOutputType>;
 
-export default function tesseractDriver(
-  options: TesseractDriverOptions,
-): Driver {
+export default function tesseractDriver<TOutputType extends OutputType>(
+  options: TesseractDriverOptions<TOutputType>,
+): Driver<TOutputType, TesseractDriverOptions<TOutputType>> {
+  const { outputType, ...tesseractOptions } = options;
   let worker: Worker | null = null;
 
   const initializeWorker = async (): Promise<Worker> => {
     if (worker) return worker;
 
     worker = await Tesseract.createWorker(
-      options.langs || "eng",
-      options.oem || 1,
-      options,
+      tesseractOptions.langs || "eng",
+      tesseractOptions.oem || 1,
+      tesseractOptions,
     );
     return worker;
   };
@@ -33,18 +36,27 @@ export default function tesseractDriver(
     name: "tesseract",
     options,
 
-    recognize: async (input: OCRInput): Promise<OCRResult> => {
+    recognize: async (input: OCRInput): Promise<OCRResult<TOutputType>> => {
       const worker = await initializeWorker();
       const imageLike = await toUint8Array(input);
 
       const result = await worker.recognize(imageLike, {}, { hocr: true });
-      return fromHtml(result.data.hocr || "");
+      const hocr = result.data.hocr || "";
+
+      // Return based on outputType
+      if (outputType === "hast") {
+        // Convert hOCR to hast
+        return fromHtml(hocr) as OCRResult<TOutputType>;
+      } else {
+        // Return raw hOCR string
+        return hocr as OCRResult<TOutputType>;
+      }
     },
 
     recognizes: async (
       inputs: OCRInput[],
       recognizesOptions: RecognizesOptions = {},
-    ): Promise<OCRResult[]> => {
+    ): Promise<OCRResult<TOutputType>[]> => {
       const scheduler = createScheduler();
       const workers: Worker[] = [];
 
@@ -74,7 +86,14 @@ export default function tesseractDriver(
               {},
               { hocr: true },
             );
-            return fromHtml(result.data.hocr || "");
+            const hocr = result.data.hocr || "";
+
+            // Return based on outputType
+            if (outputType === "hast") {
+              return fromHtml(hocr) as OCRResult<TOutputType>;
+            } else {
+              return hocr as OCRResult<TOutputType>;
+            }
           }),
         );
 
@@ -84,11 +103,15 @@ export default function tesseractDriver(
             return result.value;
           } else {
             console.error("OCR processing failed:", result.reason);
-            // Return empty hast document on failure
-            return {
-              type: "root",
-              children: [],
-            };
+            // Return empty result based on outputType
+            if (outputType === "hast") {
+              return {
+                type: "root",
+                children: [],
+              } as Root as OCRResult<TOutputType>;
+            } else {
+              return "" as OCRResult<TOutputType>;
+            }
           }
         });
       } finally {

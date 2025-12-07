@@ -54,6 +54,7 @@ async function testOCRWithOGImage() {
             );
           }
         },
+        outputType: "hast",
       }),
     });
 
@@ -138,6 +139,7 @@ async function testBatchProcessing() {
     const ocr = createOCRManager({
       driver: tesseractDriver({
         langs: "eng",
+        outputType: "hast",
       }),
     });
     console.log("\n🔍 Starting batch OCR recognition...");

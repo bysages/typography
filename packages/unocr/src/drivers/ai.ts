@@ -7,25 +7,30 @@ import type {
   RecognizesOptions,
   OCRInput,
   OCRResult,
+  OutputType,
+  Root,
 } from "..";
 
-export type AIDriverOptions = DriverOptions & {
-  model: any;
-  system?: string;
-  temperature?: number;
-  maxRetries?: number;
-  maxOutputTokens?: number;
-  topP?: number;
-  topK?: number;
-  presencePenalty?: number;
-  frequencyPenalty?: number;
-  stopSequences?: string[];
-  seed?: number;
-  abortSignal?: AbortSignal;
-  headers?: Record<string, string | undefined>;
-};
+export type AIDriverOptions<T extends OutputType = OutputType> =
+  DriverOptions<T> & {
+    model: any;
+    system?: string;
+    temperature?: number;
+    maxRetries?: number;
+    maxOutputTokens?: number;
+    topP?: number;
+    topK?: number;
+    presencePenalty?: number;
+    frequencyPenalty?: number;
+    stopSequences?: string[];
+    seed?: number;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string | undefined>;
+  };
 
-export default function aiDriver(options: AIDriverOptions): Driver {
+export default function aiDriver<TOutputType extends OutputType>(
+  options: AIDriverOptions<TOutputType>,
+): Driver<TOutputType, AIDriverOptions<TOutputType>> {
   const {
     model,
     system = "Extract all text from this image and return it as HTML. Use appropriate tags like h1-h6 for headings, p for paragraphs, and ul/ol for lists.",
@@ -40,10 +45,13 @@ export default function aiDriver(options: AIDriverOptions): Driver {
     seed,
     abortSignal,
     headers,
+    outputType,
     ...restOptions
   } = options;
 
-  const recognize = async (input: OCRInput): Promise<OCRResult> => {
+  const recognize = async (
+    input: OCRInput,
+  ): Promise<OCRResult<TOutputType>> => {
     const imageData = await toBase64(input);
 
     const { text } = await generateText({
@@ -72,8 +80,16 @@ export default function aiDriver(options: AIDriverOptions): Driver {
       ...restOptions,
     });
 
-    // Convert AI HTML output to hast
-    return fromHtml(text.trim());
+    const trimmedText = text.trim();
+
+    // Return based on outputType
+    if (outputType === "hast") {
+      // Convert AI HTML output to hast
+      return fromHtml(trimmedText) as OCRResult<TOutputType>;
+    } else {
+      // Return raw HTML string
+      return trimmedText as OCRResult<TOutputType>;
+    }
   };
 
   return {
@@ -85,7 +101,7 @@ export default function aiDriver(options: AIDriverOptions): Driver {
     recognizes: async (
       inputs: OCRInput[],
       recognizesOptions: RecognizesOptions = {},
-    ): Promise<OCRResult[]> => {
+    ): Promise<OCRResult<TOutputType>[]> => {
       const parallel = recognizesOptions.parallel || inputs.length;
 
       // Process inputs with controlled parallelism
@@ -112,10 +128,15 @@ export default function aiDriver(options: AIDriverOptions): Driver {
           return result.value;
         } else {
           console.error("AI OCR processing failed:", result.reason);
-          return {
-            type: "root",
-            children: [],
-          };
+          // Return empty result based on outputType
+          if (outputType === "hast") {
+            return {
+              type: "root",
+              children: [],
+            } as Root as OCRResult<TOutputType>;
+          } else {
+            return "" as OCRResult<TOutputType>;
+          }
         }
       });
     },
