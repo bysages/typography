@@ -13,6 +13,7 @@ UTS #39 defines security mechanisms for handling Unicode characters, including c
 
 - 🔍 **Confusable Detection**: Identify characters that can be visually confused with others
 - 🔧 **String Normalization**: Convert strings to their canonical forms
+- 🎲 **Random Replacement**: Replace characters with random confusable alternatives
 - 🛡️ **Security Applications**: Detect potential phishing attacks and homograph attacks
 - 🌐 **Unicode Support**: Comprehensive support for Unicode confusable mappings
 - ⚡️ **High Performance**: Efficient lookup algorithms with 6296+ confusable mappings
@@ -42,6 +43,8 @@ import {
   normalizeString,
   areConfusable,
   getConfusableVariations,
+  getRandomConfusable,
+  randomizeConfusables,
 } from "unconfusables";
 
 // Character confusable lookup
@@ -64,6 +67,19 @@ console.log(areConfusable("google", "goog1e")); // true
 // Generate confusable variations
 const variations = getConfusableVariations("admin");
 console.log(variations); // ["admin", "adrin", "adnin"]
+
+// Random character replacement
+console.log(getRandomConfusable("a")); // Random confusable of "a"
+console.log(getRandomConfusable("0")); // "O" or other confusable
+
+// With options: only MA type, exclude certain characters
+console.log(
+  getRandomConfusable("a", { type: "MA", exclude: new Set(["a", "A"]) }),
+);
+
+// Random string replacement (30% probability)
+const randomized = randomizeConfusables("paypal", { probability: 0.3 });
+console.log(randomized); // "paypal" with some characters randomly replaced
 ```
 
 ## 🔧 Advanced Usage
@@ -100,13 +116,39 @@ console.log(detectPhishingUrl("g00gle.com"));
 ### 🎭 String Variation Generation
 
 ```typescript
-import { getConfusableVariations, getConfusableSources } from "unconfusables";
+import {
+  getConfusableVariations,
+  getConfusableSources,
+  getRandomConfusable,
+  randomizeConfusables,
+} from "unconfusables";
 
 // Generate all possible confusable variations
 const text = "admin";
 const variations = getConfusableVariations(text);
 console.log(`"${text}" has ${variations.length} confusable variations:`);
 variations.forEach((v) => console.log(`  - ${v}`));
+
+// Random character replacement
+const randomChar = getRandomConfusable("a");
+console.log(`Random confusable for "a": ${randomChar}`);
+
+// With options: only MA type
+const randomMA = getRandomConfusable("a", { type: "MA" });
+console.log(`Random MA confusable for "a": ${randomMA}`);
+
+// Excluding specific characters
+const randomExcluded = getRandomConfusable("a", {
+  exclude: new Set(["a", "A"]),
+});
+console.log(`Random confusable for "a" excluding "a"/"A": ${randomExcluded}`);
+
+// Randomize entire string with options
+const randomString = randomizeConfusables("paypal", {
+  type: "MA",
+  probability: 0.4,
+});
+console.log(`Randomized "paypal" (40% probability, MA only): ${randomString}`);
 
 // Check what characters can be confused with a target character
 const sources = getConfusableSources("O");

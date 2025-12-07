@@ -2,7 +2,11 @@
  * Unicode Confusables Utility Functions
  */
 
-import type { ConfusableRecord, ConfusableType } from "./types";
+import type {
+  ConfusableRecord,
+  ConfusableType,
+  RandomConfusableOptions,
+} from "./types";
 import { confusables } from "./data";
 
 // Get confusable mapping for a character
@@ -93,6 +97,48 @@ export function getConfusableVariations(
   }
 
   return Array.from(variations);
+}
+
+// Replace character with random confusable
+export function getRandomConfusable(
+  char: string,
+  options: RandomConfusableOptions = {},
+): string {
+  if (char.length === 0) return char;
+
+  const confusable = confusables.confusables[char];
+  if (!confusable || confusable.target.length === 0) return char;
+
+  // Filter by type if specified
+  if (options.type && confusable.type !== options.type) return char;
+
+  // Filter out excluded characters
+  let targets = confusable.target;
+  if (options.exclude) {
+    targets = targets.filter((target) => !options.exclude!.has(target));
+    if (targets.length === 0) return char;
+  }
+
+  const randomIndex = Math.floor(Math.random() * targets.length);
+  return targets[randomIndex];
+}
+
+// Randomly replace characters in string
+export function randomizeConfusables(
+  text: string,
+  options: RandomConfusableOptions & { probability?: number } = {},
+): string {
+  const probability = options.probability ?? 0.5;
+
+  return text
+    .split("")
+    .map((char) => {
+      if (Math.random() < probability) {
+        return getRandomConfusable(char, options);
+      }
+      return char;
+    })
+    .join("");
 }
 
 // Get metadata about the confusables dataset

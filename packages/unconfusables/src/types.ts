@@ -25,3 +25,9 @@ export interface ConfusableMetadata {
     X: number;
   };
 }
+
+export interface RandomConfusableOptions {
+  type?: ConfusableType;
+  exclude?: Set<string>;
+  probability?: number;
+}

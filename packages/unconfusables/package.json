@@ -1,6 +1,6 @@
 {
   "name": "unconfusables",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Unicode confusable characters detection and string normalization library based on UTS #39",
   "main": "dist/index.mjs",
   "types": "dist/index.d.ts",
