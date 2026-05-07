@@ -58,7 +58,7 @@
   "homepage": "https://github.com/bysages/typography#readme",
   "dependencies": {
     "fontkit": "2.0.4",
-    "opentype.js": "1.3.4",
+    "opentype.js": "2.0.0",
     "undio": "0.2.0"
   },
   "devDependencies": {
