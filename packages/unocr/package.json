@@ -62,7 +62,7 @@
   },
   "homepage": "https://github.com/bysages/typography#readme",
   "dependencies": {
-    "@types/hast": "3.0.4",
+    "@types/hast": "3.0.5",
     "hast-util-from-html": "2.0.3",
     "undio": "0.2.0"
   },
