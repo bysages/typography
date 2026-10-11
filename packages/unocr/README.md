@@ -5,11 +5,12 @@
 ![npm license](https://img.shields.io/npm/l/unocr)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](https://www.contributor-covenant.org/version/2/1/code_of_conduct/)
 
-Unified OCR library with multi-driver support for Tesseract.js and AI vision models, providing structured text extraction using hast-based output format.
+Unified OCR library with pluggable drivers: system OCR (macOS VisionKit / Windows Media OCR), the tesseract CLI, tesseract.js (WASM), browser TextDetector, and AI vision models. Every driver yields a shared structured document (lines, words, confidences, normalized boxes) rendered as html or hast with per-line `data.ocr` metadata.
 
 ## ✨ Features
 
-- 🔍 **Multi-Engine Support**: Tesseract.js and AI vision drivers with unified interface
+- 🔍 **Multi-Engine Support**: Native, CLI, tesseract.js, browser, and AI drivers with unified interface
+- 🧩 **OCRDocument Intermediate Representation**: Lines/words with confidences and normalized bounding boxes across all drivers
 - 📝 **Structured Output**: Hast-based OCR results for rich document structure
 - 🌐 **Universal Input**: Support for various image formats via undio integration
 - ⚡️ **High Performance**: Parallel processing with scheduler support
@@ -38,6 +39,16 @@ pnpm add unocr
 
 ### Tesseract.js Driver
 
+Or let unocr pick the best available backend automatically (system OCR -> tesseract CLI -> tesseract.js):
+
+```typescript
+import { createOCRManager } from "unocr";
+import autoDriver from "unocr/drivers/auto";
+
+const ocr = createOCRManager({ driver: autoDriver() });
+const result = await ocr.recognize(imageBuffer); // html string by default
+```
+
 ```typescript
 import { createOCRManager } from "unocr";
 import tesseractDriver from "unocr/drivers/tesseract";
@@ -60,6 +71,45 @@ console.log(results); // Array of hast Root objects
 
 // Clean up
 await ocr.dispose();
+```
+
+### System OCR Driver (macOS / Windows)
+
+```typescript
+import { createOCRManager } from "unocr";
+import nativeDriver from "unocr/drivers/native";
+
+// Uses VisionKit on macOS and Media OCR on Windows via @napi-rs/system-ocr.
+// Install it separately: pnpm add @napi-rs/system-ocr
+const ocr = createOCRManager({
+  driver: nativeDriver({ langs: ["en-US"], accuracy: "accurate" }),
+});
+
+const result = await ocr.recognize(imageBuffer);
+```
+
+### Tesseract CLI Driver
+
+```typescript
+import { createOCRManager } from "unocr";
+import cliDriver from "unocr/drivers/cli";
+
+// Spawns the system "tesseract" executable (must be installed separately).
+const ocr = createOCRManager({
+  driver: cliDriver({ langs: "eng" }),
+});
+
+const result = await ocr.recognize(imageBuffer);
+```
+
+### Browser TextDetector Driver
+
+```typescript
+import webDriver from "unocr/drivers/web";
+
+// Shape Detection API (Chrome/Edge). ImageBitmapSource inputs only.
+const driver = webDriver({ outputType: "hast" });
+const result = await driver.recognize(imageElement);
 ```
 
 ### AI Vision Driver

@@ -1,36 +1,111 @@
-import { fromHtml } from "hast-util-from-html";
 import Tesseract, { createScheduler } from "tesseract.js";
-import type { Worker } from "tesseract.js";
+import type { Page, Worker } from "tesseract.js";
 import { toUint8Array } from "undio";
 
 import type {
   Driver,
   DriverOptions,
-  RecognizesOptions,
+  OCRBox,
+  OCRDocument,
   OCRInput,
+  OCRLine,
   OCRResult,
   OutputType,
-  Root,
+  RecognizesOptions,
 } from "..";
+import { formatDocument } from "../document";
 
 export type TesseractDriverOptions<TOutputType extends OutputType> =
   Partial<Tesseract.WorkerOptions> & DriverOptions<TOutputType>;
 
+interface PixelBox {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+interface PixelEntry {
+  text: string;
+  confidence: number;
+  box: PixelBox;
+  words: { text: string; confidence: number; box: PixelBox }[];
+}
+
+/** Convert a tesseract.js recognition page into an OCRDocument with normalized boxes. */
+export function pageToDocument(page: Page): OCRDocument {
+  const entries: PixelEntry[] = [];
+  let maxX = 1;
+  let maxY = 1;
+
+  const grow = (box: PixelBox) => {
+    maxX = Math.max(maxX, box.x1);
+    maxY = Math.max(maxY, box.y1);
+  };
+
+  for (const block of page.blocks ?? []) {
+    for (const paragraph of block.paragraphs) {
+      for (const line of paragraph.lines) {
+        const words: PixelEntry["words"] = [];
+        for (const word of line.words) {
+          const text = word.text.trim();
+          if (text.length === 0) continue;
+          grow(word.bbox);
+          words.push({ text, confidence: word.confidence / 100, box: { ...word.bbox } });
+        }
+        const text = line.text.trim();
+        if (text.length === 0) continue;
+        grow(line.bbox);
+        entries.push({ text, confidence: line.confidence / 100, box: { ...line.bbox }, words });
+      }
+    }
+  }
+
+  const normalize = (box: PixelBox): OCRBox => ({
+    x: box.x0 / maxX,
+    y: box.y0 / maxY,
+    width: (box.x1 - box.x0) / maxX,
+    height: (box.y1 - box.y0) / maxY,
+  });
+
+  const lines: OCRLine[] = entries.map((entry) => ({
+    text: entry.text,
+    confidence: entry.confidence,
+    box: normalize(entry.box),
+    words: entry.words.map((word) => ({
+      text: word.text,
+      confidence: word.confidence,
+      box: normalize(word.box),
+    })),
+  }));
+
+  return { text: page.text, confidence: page.confidence / 100, lines };
+}
 export default function tesseractDriver<TOutputType extends OutputType>(
   options: TesseractDriverOptions<TOutputType>,
 ): Driver<TOutputType, TesseractDriverOptions<TOutputType>> {
   const { outputType, ...tesseractOptions } = options;
-  let worker: Worker | null = null;
+  let workerPromise: Promise<Worker> | null = null;
 
-  const initializeWorker = async (): Promise<Worker> => {
-    if (worker) return worker;
-
-    worker = await Tesseract.createWorker(
+  // Cache the creation promise so concurrent recognizes share one worker.
+  const initializeWorker = (): Promise<Worker> => {
+    workerPromise ??= Tesseract.createWorker(
       tesseractOptions.langs || "eng",
       tesseractOptions.oem || 1,
       tesseractOptions,
     );
-    return worker;
+    // Drop a failed creation so the next call can retry.
+    return workerPromise.catch((error) => {
+      workerPromise = null;
+      throw error;
+    });
+  };
+
+  const recognizeOnce = async (input: OCRInput): Promise<OCRDocument> => {
+    const activeWorker = await initializeWorker();
+    const imageLike = await toUint8Array(input);
+    const result = await activeWorker.recognize(imageLike, {}, { blocks: true, text: true });
+    return pageToDocument(result.data);
   };
 
   return {
@@ -38,20 +113,8 @@ export default function tesseractDriver<TOutputType extends OutputType>(
     options,
 
     recognize: async (input: OCRInput): Promise<OCRResult<TOutputType>> => {
-      const worker = await initializeWorker();
-      const imageLike = await toUint8Array(input);
-
-      const result = await worker.recognize(imageLike, {}, { hocr: true });
-      const hocr = result.data.hocr || "";
-
-      // Return based on outputType
-      if (outputType === "hast") {
-        // Convert hOCR to hast
-        return fromHtml(hocr) as OCRResult<TOutputType>;
-      } else {
-        // Return raw hOCR string
-        return hocr as OCRResult<TOutputType>;
-      }
+      const document = await recognizeOnce(input);
+      return formatDocument(document, outputType) as OCRResult<TOutputType>;
     },
 
     recognizes: async (
@@ -59,67 +122,52 @@ export default function tesseractDriver<TOutputType extends OutputType>(
       recognizesOptions: RecognizesOptions = {},
     ): Promise<OCRResult<TOutputType>[]> => {
       const scheduler = createScheduler();
-      const workers: Worker[] = [];
-
       try {
-        // Create workers based on parallel option (default 4)
         const parallel = recognizesOptions.parallel || 4;
         const workerCount = Math.min(inputs.length, parallel);
-
         for (let i = 0; i < workerCount; i++) {
-          const worker = await Tesseract.createWorker(
-            options.langs || "eng",
-            options.oem || 1,
-            options,
+          const schedulerWorker = await Tesseract.createWorker(
+            tesseractOptions.langs || "eng",
+            tesseractOptions.oem || 1,
+            tesseractOptions,
           );
-          workers.push(worker);
-          scheduler.addWorker(worker);
+          scheduler.addWorker(schedulerWorker);
         }
 
-        // Process all inputs in parallel with Promise.allSettled
         const results = await Promise.allSettled(
           inputs.map(async (input) => {
             const imageLike = await toUint8Array(input);
-
-            const result = await scheduler.addJob("recognize", imageLike, {}, { hocr: true });
-            const hocr = result.data.hocr || "";
-
-            // Return based on outputType
-            if (outputType === "hast") {
-              return fromHtml(hocr) as OCRResult<TOutputType>;
-            } else {
-              return hocr as OCRResult<TOutputType>;
-            }
+            const result = await scheduler.addJob(
+              "recognize",
+              imageLike,
+              {},
+              {
+                blocks: true,
+                text: true,
+              },
+            );
+            return pageToDocument(result.data);
           }),
         );
 
-        // Filter successful results and convert errors to empty documents
         return results.map((result) => {
           if (result.status === "fulfilled") {
-            return result.value;
-          } else {
-            console.error("OCR processing failed:", result.reason);
-            // Return empty result based on outputType
-            if (outputType === "hast") {
-              return {
-                type: "root",
-                children: [],
-              } as Root as OCRResult<TOutputType>;
-            } else {
-              return "" as OCRResult<TOutputType>;
-            }
+            return formatDocument(result.value, outputType) as OCRResult<TOutputType>;
           }
+          console.error("OCR processing failed:", result.reason);
+          return formatDocument({ text: "", lines: [] }, outputType) as OCRResult<TOutputType>;
         });
       } finally {
-        // Clean up scheduler and workers
         await scheduler.terminate();
       }
     },
 
     dispose: async (): Promise<void> => {
-      if (worker) {
-        await worker.terminate();
-        worker = null;
+      const promise = workerPromise;
+      workerPromise = null;
+      if (promise) {
+        const worker = await promise.catch(() => null);
+        await worker?.terminate();
       }
     },
   };
