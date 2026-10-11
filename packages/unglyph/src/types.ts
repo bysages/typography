@@ -81,7 +81,7 @@ export interface FontOptions {
   ascender?: number;
   /** Descender depth */
   descender?: number;
-  /** Font weight (100-900) */
+  /** OS/2 usWeightClass for the default instance (e.g. 400). */
   weight?: number;
   /** Font style: normal or italic */
   italic?: boolean;
@@ -101,6 +101,8 @@ export interface BaseRenderOptions {
  * SVG rendering options
  */
 export interface SVGRenderOptions extends BaseRenderOptions {
+  /** Font units per em for scaling. Defaults to 1000. */
+  unitsPerEm?: number;
   /** Background color */
   backgroundColor?: string;
   /** Padding */
@@ -115,6 +117,8 @@ export interface SVGRenderOptions extends BaseRenderOptions {
  * Canvas rendering options
  */
 export interface CanvasRenderOptions extends BaseRenderOptions {
+  /** Font units per em for scaling. Defaults to 1000. */
+  unitsPerEm?: number;
   /** Canvas 2D rendering context */
   ctx: any; // Compatible with both browser Canvas and @napi-rs/canvas
   /** X position */
@@ -127,6 +131,8 @@ export interface CanvasRenderOptions extends BaseRenderOptions {
  * Image rendering options
  */
 export interface ImageRenderOptions extends BaseRenderOptions {
+  /** Font units per em for scaling. Defaults to 1000. */
+  unitsPerEm?: number;
   /** Background color */
   backgroundColor?: string;
   /** Padding */
@@ -192,6 +198,24 @@ export interface FontData {
   italic?: boolean;
   styleName?: string;
 
+  postscriptName?: string;
+  fullName?: string;
+  /** OS/2 usWidthClass (1-9). */
+  widthClass?: number;
+  /** Variable font axes, e.g. { wght: { min, default, max } }. */
+  variationAxes?: Record<string, VariationAxisInfo>;
+  /** Color font capabilities detected in the font tables. */
+  colorFormats?: ColorFormat[];
+
   // Glyph data
   glyphs: GlyphData[];
+}
+
+export type ColorFormat = "COLRv0" | "COLRv1" | "CBDT" | "sbix" | "SVG";
+
+export interface VariationAxisInfo {
+  name: string;
+  min: number;
+  default: number;
+  max: number;
 }

@@ -103,12 +103,12 @@ export class GlyphManager {
    * Find glyph by unicode (checks unicode property or codePoints)
    */
   findByUnicode(unicode: string | number): GlyphData | undefined {
-    const codePoint = typeof unicode === "string" ? unicode.charCodeAt(0) : unicode;
+    const codePoint = typeof unicode === "string" ? (unicode.codePointAt(0) ?? 0) : unicode;
 
     for (const glyph of this.glyphs.values()) {
       // Check unicode property
       if (typeof glyph.unicode === "string") {
-        if (glyph.unicode.charCodeAt(0) === codePoint) return glyph;
+        if (glyph.unicode.codePointAt(0) === codePoint) return glyph;
       } else {
         if (glyph.unicode === codePoint) return glyph;
       }

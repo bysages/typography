@@ -44,6 +44,7 @@
   "devDependencies": {
     "@funish/basis": "0.3.0",
     "@types/node": "26.6.5",
+    "rolldown-plugin-wasm": "^0.3.2",
     "typescript": "6.0.3",
     "vite-plus": "1.1.0"
   },

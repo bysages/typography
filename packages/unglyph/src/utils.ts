@@ -1,27 +1,33 @@
 import fontkit from "fontkit";
-import * as opentype from "opentype.js";
+import opentypeModule from "opentype.js";
+import type * as opentype from "opentype.js";
+
+// opentype.js 2.x ships CJS; constructors live on the default export in Node ESM.
+const ot = ((opentypeModule as unknown as { default?: typeof opentype }).default ??
+  opentypeModule) as typeof opentype;
 
 import type { GlyphData, PathData, PathCommand } from "./types";
 
 /**
  * Convert our unified PathData to opentype.js Path
  */
-export function convertToOpentypePath(pathData: PathData): opentype.Path {
-  const path = new opentype.Path();
+export function convertToOpentypePath(pathData: PathData, ascent = 0): opentype.Path {
+  const path = new ot.Path();
+  const flip = (y: number) => ascent - y;
 
   for (const cmd of pathData.commands) {
     switch (cmd.type) {
       case "move":
-        path.moveTo(cmd.x, cmd.y);
+        path.moveTo(cmd.x, flip(cmd.y));
         break;
       case "line":
-        path.lineTo(cmd.x, cmd.y);
+        path.lineTo(cmd.x, flip(cmd.y));
         break;
       case "quadratic":
-        path.quadraticCurveTo(cmd.cx, cmd.cy, cmd.x, cmd.y);
+        path.quadraticCurveTo(cmd.cx, flip(cmd.cy), cmd.x, flip(cmd.y));
         break;
       case "cubic":
-        path.bezierCurveTo(cmd.cx1, cmd.cy1, cmd.cx2, cmd.cy2, cmd.x, cmd.y);
+        path.bezierCurveTo(cmd.cx1, flip(cmd.cy1), cmd.cx2, flip(cmd.cy2), cmd.x, flip(cmd.y));
         break;
       case "close":
         path.close();
@@ -149,11 +155,12 @@ function convertFromFontkitPath(fontkitPath: fontkit.Path, ascent?: number): Pat
 /**
  * Convert our unified GlyphData to mock fontkit.Glyph for SVG generation
  */
-export function convertToFontkitGlyph(glyph: GlyphData): fontkit.Glyph {
-  const codePoint = typeof glyph.unicode === "string" ? glyph.unicode.charCodeAt(0) : glyph.unicode;
+export function convertToFontkitGlyph(glyph: GlyphData, ascent = 0): fontkit.Glyph {
+  const codePoint =
+    typeof glyph.unicode === "string" ? (glyph.unicode.codePointAt(0) ?? 0) : glyph.unicode;
 
   const path: fontkit.Path = {
-    commands: convertPathCommandsToFontkit(glyph.path.commands),
+    commands: convertPathCommandsToFontkit(glyph.path.commands, ascent),
     bbox: glyph.path.bounds || {
       minX: 0,
       minY: 0,
@@ -230,22 +237,26 @@ export function convertToFontkitGlyph(glyph: GlyphData): fontkit.Glyph {
 /**
  * Convert our PathCommand array to fontkit PathCommand array
  */
-function convertPathCommandsToFontkit(commands: PathCommand[]): fontkit.PathCommand[] {
+function convertPathCommandsToFontkit(
+  commands: PathCommand[],
+  ascent: number,
+): fontkit.PathCommand[] {
+  const flip = (y: number) => ascent - y;
   return commands.map((cmd) => {
     switch (cmd.type) {
       case "move":
-        return { command: "moveTo", args: [cmd.x, cmd.y] };
+        return { command: "moveTo", args: [cmd.x, flip(cmd.y)] };
       case "line":
-        return { command: "lineTo", args: [cmd.x, cmd.y] };
+        return { command: "lineTo", args: [cmd.x, flip(cmd.y)] };
       case "quadratic":
         return {
           command: "quadraticCurveTo",
-          args: [cmd.cx, cmd.cy, cmd.x, cmd.y],
+          args: [cmd.cx, flip(cmd.cy), cmd.x, flip(cmd.y)],
         };
       case "cubic":
         return {
           command: "bezierCurveTo",
-          args: [cmd.cx1, cmd.cy1, cmd.cx2, cmd.cy2, cmd.x, cmd.y],
+          args: [cmd.cx1, flip(cmd.cy1), cmd.cx2, flip(cmd.cy2), cmd.x, flip(cmd.y)],
         };
       case "close":
         return { command: "closePath", args: [] };
