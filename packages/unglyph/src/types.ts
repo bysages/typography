@@ -157,9 +157,11 @@ export type GlyphOperation =
   | { type: "remove"; index: number };
 
 /**
- * Font export format
+ * Font export format. TrueType (glyf) outlines are not produced: the
+ * opentype.js writer only emits CFF, so "otf" is the native target and
+ * WOFF/WOFF2 wrap the same sfnt.
  */
-export type FontFormat = "ttf" | "otf" | "woff" | "woff2";
+export type FontFormat = "otf" | "woff" | "woff2";
 
 /**
  * Font generation options

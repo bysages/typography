@@ -13,7 +13,7 @@ import { compress as compressWoff2, decompress as decompressWoff2 } from "woff2-
 
 import type { FontInput } from "./types";
 
-export type SubsetTargetFormat = "sfnt" | "truetype" | "woff" | "woff2";
+export type SubsetTargetFormat = "sfnt" | "woff" | "woff2";
 
 export interface SubsetVariationAxis {
   min: number;
@@ -24,7 +24,7 @@ export interface SubsetVariationAxis {
 export interface SubsetOptions {
   /** Output container. Defaults to the input format. */
   targetFormat?: SubsetTargetFormat;
-  /** Preserve these name table IDs. Pass [] to keep the default set. */
+  /** Preserve these name table IDs on top of the HarfBuzz defaults. */
   preserveNameIds?: number[];
   /** Partially or fully instance variable axes: pinned numbers or ranges. */
   variationAxes?: Record<string, number | SubsetVariationAxis>;
@@ -38,9 +38,9 @@ export interface SubsetOptions {
   noHinting?: boolean;
   /** Disable layout feature closure (smaller output, fewer shaping results). */
   noLayoutClosure?: boolean;
-  /** Report subset progress (0..1). Supported at runtime, missing from @types. */
+  /** Report pipeline stage progress (0..1). HarfBuzz internals are not instrumented. */
   progressFunction?: (progress: number) => void;
-  /** Keep every glyph (like --gids=*) instead of subsetting to `text`. */
+  /** Keep every cmap-reachable glyph instead of subsetting to `text`. */
   keepAllGlyphs?: boolean;
 }
 
@@ -61,7 +61,11 @@ function writeTag(bytes: Uint8Array, offset: number, tag: string): void {
 
 function readU32(bytes: Uint8Array, offset: number): number {
   return (
-    (bytes[offset] << 24) | (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3]
+    ((bytes[offset] << 24) |
+      (bytes[offset + 1] << 16) |
+      (bytes[offset + 2] << 8) |
+      bytes[offset + 3]) >>>
+    0
   );
 }
 
@@ -83,6 +87,7 @@ function writeU16(bytes: Uint8Array, offset: number, value: number): void {
 
 /** Sniff the container format from the leading four bytes. */
 export function detectFontFormat(bytes: Uint8Array): "sfnt" | "collection" | "woff" | "woff2" {
+  if (bytes.length < 4) throw new Error("Font data too short to identify");
   const signature = readU32(bytes, 0);
   if (signature === FOURCC.ttc) return "collection";
   if (signature === FOURCC.woff) return "woff";
@@ -127,6 +132,9 @@ async function woffToSfnt(woff: Uint8Array): Promise<Uint8Array> {
   const numTables = readU16(woff, 12);
   const flavor = readU32(woff, 4);
 
+  if (woff.length < 44 + numTables * 20) {
+    throw new Error("WOFF table directory extends past the end of the file");
+  }
   const tables: SfntTable[] = [];
   for (let i = 0; i < numTables; i++) {
     const dir = 44 + i * 20;
@@ -135,6 +143,12 @@ async function woffToSfnt(woff: Uint8Array): Promise<Uint8Array> {
     const compLength = readU32(woff, dir + 8);
     const origLength = readU32(woff, dir + 12);
     const checksum = readU32(woff, dir + 16);
+    if (offset + compLength > woff.length) {
+      throw new Error(`WOFF table ${tag} extends past the end of the file`);
+    }
+    if (origLength > 512 * 1024 * 1024) {
+      throw new Error(`WOFF table ${tag} declares an implausible ${origLength} bytes`);
+    }
     const raw = woff.subarray(offset, offset + compLength);
     const data = compLength < origLength ? await zlibDecompress(raw) : raw;
     if (data.length !== origLength) {
@@ -168,7 +182,7 @@ async function woffToSfnt(woff: Uint8Array): Promise<Uint8Array> {
 }
 
 /** Wrap a standalone sfnt into the legacy WOFF1 container. */
-async function sfntToWoff(sfnt: Uint8Array): Promise<Uint8Array> {
+export async function sfntToWoff(sfnt: Uint8Array): Promise<Uint8Array> {
   const numTables = readU16(sfnt, 4);
   const flavor = readU32(sfnt, 0);
 
@@ -190,7 +204,7 @@ async function sfntToWoff(sfnt: Uint8Array): Promise<Uint8Array> {
 
   const headerLength = 44 + numTables * 20;
   const totalSfntSize = 12 + numTables * 16 + entries.reduce((s, e) => s + align4(e.origLength), 0);
-  const total = headerLength + entries.reduce((sum, e) => sum + e.compressed.length, 0);
+  const total = headerLength + entries.reduce((sum, e) => sum + align4(e.compressed.length), 0);
   const out = new Uint8Array(total);
   writeU32(out, 0, FOURCC.woff);
   writeU32(out, 4, flavor);
@@ -208,7 +222,7 @@ async function sfntToWoff(sfnt: Uint8Array): Promise<Uint8Array> {
     writeU32(out, dir + 12, e.origLength);
     writeU32(out, dir + 16, e.checksum);
     out.set(e.compressed, dataOffset);
-    dataOffset += e.compressed.length;
+    dataOffset += align4(e.compressed.length);
   });
   return out;
 }
@@ -287,6 +301,10 @@ async function loadHarfbuzz(): Promise<HarfbuzzInstance> {
       exports._initialize?.();
       return { exports };
     });
+    // allow a later call to retry after a failed initialization
+    harfbuzzPromise.catch(() => {
+      harfbuzzPromise = null;
+    });
   }
   return harfbuzzPromise;
 }
@@ -309,130 +327,136 @@ function hbSubset(
 ): Uint8Array {
   const { preserveNameIds, keepFeatures, variationAxes, noLayoutClosure } = options;
 
-  const input = harfbuzz.hb_subset_input_create_or_fail();
-  if (input === 0) {
-    throw new Error("hb_subset_input_create_or_fail (harfbuzz) returned zero, indicating failure");
-  }
-
   const fontBuffer = harfbuzz.malloc(font.byteLength);
-  new Uint8Array(harfbuzz.memory.buffer).set(font, fontBuffer);
+  if (!fontBuffer) throw new Error("harfbuzz malloc failed");
 
-  const blob = harfbuzz.hb_blob_create(fontBuffer, font.byteLength, HB_MEMORY_MODE_WRITABLE, 0, 0);
-  const face = harfbuzz.hb_face_create(blob, faceIndex);
-  harfbuzz.hb_blob_destroy(blob);
+  let face = 0;
+  let input = 0;
+  let subset = 0;
+  let result = 0;
+  try {
+    new Uint8Array(harfbuzz.memory.buffer).set(font, fontBuffer);
 
-  const layoutFeatures = harfbuzz.hb_subset_input_set(input, HB_SUBSET_SETS_LAYOUT_FEATURE_TAG);
-  harfbuzz.hb_set_clear(layoutFeatures);
-  if (keepFeatures === undefined) {
-    // equivalent of --layout-features=*
-    harfbuzz.hb_set_invert(layoutFeatures);
-  } else {
-    for (const feature of keepFeatures) harfbuzz.hb_set_add(layoutFeatures, hbTag(feature));
-  }
+    const blob = harfbuzz.hb_blob_create(
+      fontBuffer,
+      font.byteLength,
+      HB_MEMORY_MODE_WRITABLE,
+      0,
+      0,
+    );
+    if (!blob) throw new Error("hb_blob_create (harfbuzz) failed");
+    face = harfbuzz.hb_face_create(blob, faceIndex);
+    if (!face) {
+      harfbuzz.hb_blob_destroy(blob);
+      throw new Error("hb_face_create (harfbuzz) failed");
+    }
+    // hb_face_create holds its own reference, so the caller reference is redundant.
+    harfbuzz.hb_blob_destroy(blob);
 
-  if (preserveNameIds) {
-    const inputNameIds = harfbuzz.hb_subset_input_set(input, HB_SUBSET_SETS_NAME_ID);
-    for (const nameId of preserveNameIds) harfbuzz.hb_set_add(inputNameIds, nameId);
-  }
+    input = harfbuzz.hb_subset_input_create_or_fail();
+    if (!input) throw new Error("hb_subset_input_create_or_fail (harfbuzz) failed");
 
-  let flags = harfbuzz.hb_subset_input_get_flags(input);
-  if (noLayoutClosure) flags |= HB_SUBSET_FLAGS_NO_LAYOUT_CLOSURE;
-  if (options.noHinting) flags |= HB_SUBSET_FLAGS_NO_HINTING;
-  if (options.glyphNames) flags |= HB_SUBSET_FLAGS_GLYPH_NAMES;
-  if (flags !== harfbuzz.hb_subset_input_get_flags(input)) {
-    harfbuzz.hb_subset_input_set_flags(input, flags);
-  }
+    const layoutFeatures = harfbuzz.hb_subset_input_set(input, HB_SUBSET_SETS_LAYOUT_FEATURE_TAG);
+    harfbuzz.hb_set_clear(layoutFeatures);
+    if (keepFeatures === undefined) {
+      // equivalent of --layout-features=*
+      harfbuzz.hb_set_invert(layoutFeatures);
+    } else {
+      for (const feature of keepFeatures) harfbuzz.hb_set_add(layoutFeatures, hbTag(feature));
+    }
 
-  if (options.dropTables) {
-    const inputDropTables = harfbuzz.hb_subset_input_set(input, HB_SUBSET_SETS_DROP_TABLE_TAG);
-    for (const tag of options.dropTables) harfbuzz.hb_set_add(inputDropTables, hbTag(tag));
-  }
+    if (preserveNameIds) {
+      const inputNameIds = harfbuzz.hb_subset_input_set(input, HB_SUBSET_SETS_NAME_ID);
+      for (const nameId of preserveNameIds) harfbuzz.hb_set_add(inputNameIds, nameId);
+    }
 
-  const inputUnicodes = harfbuzz.hb_subset_input_unicode_set(input);
-  if (text === undefined) {
-    // equivalent of --gids=*
-    harfbuzz.hb_set_clear(inputUnicodes);
-    harfbuzz.hb_set_invert(inputUnicodes);
-  } else {
-    for (const char of text) harfbuzz.hb_set_add(inputUnicodes, char.codePointAt(0) ?? 0);
-  }
+    let flags = harfbuzz.hb_subset_input_get_flags(input);
+    if (noLayoutClosure) flags |= HB_SUBSET_FLAGS_NO_LAYOUT_CLOSURE;
+    if (options.noHinting) flags |= HB_SUBSET_FLAGS_NO_HINTING;
+    if (options.glyphNames) flags |= HB_SUBSET_FLAGS_GLYPH_NAMES;
+    if (flags !== harfbuzz.hb_subset_input_get_flags(input)) {
+      harfbuzz.hb_subset_input_set_flags(input, flags);
+    }
 
-  if (variationAxes) {
-    for (const [axisName, value] of Object.entries(variationAxes)) {
-      if (typeof value === "number") {
-        if (!harfbuzz.hb_subset_input_pin_axis_location(input, face, hbTag(axisName), value)) {
-          harfbuzz.hb_face_destroy(face);
-          harfbuzz.free(fontBuffer);
-          throw new Error(
-            `hb_subset_input_pin_axis_location (harfbuzz) returned zero when pinning ${axisName} to ${value}, indicating failure. Maybe the axis does not exist in the font?`,
-          );
-        }
-      } else if (value && typeof value === "object") {
-        if (typeof value.min !== "number" || typeof value.max !== "number") {
-          harfbuzz.hb_face_destroy(face);
-          harfbuzz.free(fontBuffer);
-          throw new Error(
-            `${axisName}: You must provide both a min and a max value when setting the axis range`,
-          );
-        }
-        if (
-          !harfbuzz.hb_subset_input_set_axis_range(
-            input,
-            face,
-            hbTag(axisName),
-            value.min,
-            value.max,
-            value.default ?? Number.NaN,
-          )
-        ) {
-          harfbuzz.hb_face_destroy(face);
-          harfbuzz.free(fontBuffer);
-          throw new Error(
-            `hb_subset_input_set_axis_range (harfbuzz) returned zero when setting the range of ${axisName} to [${value.min}; ${value.max}] and a default value of ${value.default}, indicating failure. Maybe the axis does not exist in the font?`,
-          );
+    if (options.dropTables) {
+      const inputDropTables = harfbuzz.hb_subset_input_set(input, HB_SUBSET_SETS_DROP_TABLE_TAG);
+      for (const tag of options.dropTables) harfbuzz.hb_set_add(inputDropTables, hbTag(tag));
+    }
+
+    const inputUnicodes = harfbuzz.hb_subset_input_unicode_set(input);
+    if (text === undefined) {
+      // equivalent of --gids=*
+      harfbuzz.hb_set_clear(inputUnicodes);
+      harfbuzz.hb_set_invert(inputUnicodes);
+    } else {
+      for (const char of text) harfbuzz.hb_set_add(inputUnicodes, char.codePointAt(0) ?? 0);
+    }
+
+    if (variationAxes) {
+      for (const [axisName, value] of Object.entries(variationAxes)) {
+        if (typeof value === "number") {
+          if (!harfbuzz.hb_subset_input_pin_axis_location(input, face, hbTag(axisName), value)) {
+            throw new Error(
+              `hb_subset_input_pin_axis_location (harfbuzz) returned zero when pinning ${axisName} to ${value}, indicating failure. Maybe the axis does not exist in the font?`,
+            );
+          }
+        } else if (value && typeof value === "object") {
+          if (typeof value.min !== "number" || typeof value.max !== "number") {
+            throw new Error(
+              `${axisName}: You must provide both a min and a max value when setting the axis range`,
+            );
+          }
+          if (
+            !harfbuzz.hb_subset_input_set_axis_range(
+              input,
+              face,
+              hbTag(axisName),
+              value.min,
+              value.max,
+              value.default ?? Number.NaN,
+            )
+          ) {
+            throw new Error(
+              `hb_subset_input_set_axis_range (harfbuzz) returned zero when setting the range of ${axisName} to [${value.min}; ${value.max}] and a default value of ${value.default}, indicating failure. Maybe the axis does not exist in the font?`,
+            );
+          }
         }
       }
     }
-  }
 
-  let subset: number;
-  try {
     subset = harfbuzz.hb_subset_or_fail(face, input);
-    if (subset === 0) {
+    if (!subset) {
       throw new Error(
         "hb_subset_or_fail (harfbuzz) returned zero, indicating failure. Maybe the input file is corrupted?",
       );
     }
+
+    result = harfbuzz.hb_face_reference_blob(subset);
+    if (!result) throw new Error("hb_face_reference_blob (harfbuzz) failed");
+    const offset = harfbuzz.hb_blob_get_data(result, 0);
+    const subsetByteLength = harfbuzz.hb_blob_get_length(result);
+    if (subsetByteLength === 0) {
+      throw new Error("Failed to create subset font, maybe the input file is corrupted?");
+    }
+
+    // The wasm heap may grow during subsetting, detaching earlier views, so take
+    // a fresh view and copy the subset out.
+    return new Uint8Array(harfbuzz.memory.buffer).slice(offset, offset + subsetByteLength);
   } finally {
-    harfbuzz.hb_subset_input_destroy(input);
-  }
-
-  const result = harfbuzz.hb_face_reference_blob(subset);
-  const offset = harfbuzz.hb_blob_get_data(result, 0);
-  const subsetByteLength = harfbuzz.hb_blob_get_length(result);
-  if (subsetByteLength === 0) {
-    harfbuzz.hb_blob_destroy(result);
-    harfbuzz.hb_face_destroy(subset);
-    harfbuzz.hb_face_destroy(face);
+    if (result) harfbuzz.hb_blob_destroy(result);
+    if (subset) harfbuzz.hb_face_destroy(subset);
+    if (input) harfbuzz.hb_subset_input_destroy(input);
+    if (face) harfbuzz.hb_face_destroy(face);
     harfbuzz.free(fontBuffer);
-    throw new Error("Failed to create subset font, maybe the input file is corrupted?");
   }
-
-  // The wasm heap may grow during subsetting, detaching earlier views, so take
-  // a fresh view and copy the subset out.
-  const out = new Uint8Array(harfbuzz.memory.buffer).slice(offset, offset + subsetByteLength);
-  harfbuzz.hb_blob_destroy(result);
-  harfbuzz.hb_face_destroy(subset);
-  harfbuzz.hb_face_destroy(face);
-  harfbuzz.free(fontBuffer);
-  return out;
 }
+
 // ---------------------------------------------------------------------------
 // public API
 // ---------------------------------------------------------------------------
 
-/** Subset a font to the given text (plus a basic Latin safety set). Returns
- * the subsetted font as bytes in the requested container format. */
+/** Subset a font to the given text. Returns the subsetted font as bytes in
+ * the requested container format. */
 export async function subsetFont(
   input: FontInput,
   text: string,

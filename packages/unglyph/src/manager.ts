@@ -41,7 +41,10 @@ export class GlyphManager {
     if (!existing) return false;
 
     const updated = { ...existing, ...updates };
-    this.glyphs.set(id, updated);
+    if (updates.index !== undefined && updates.index !== id) {
+      this.glyphs.delete(id);
+    }
+    this.glyphs.set(updated.index, updated);
     return true;
   }
 

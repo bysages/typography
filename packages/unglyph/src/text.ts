@@ -45,6 +45,7 @@ export function layoutText(
   const glyphs: TextLayout["glyphs"] = [];
   const missing: string[] = [];
   const glyphIndex = buildGlyphIndex(font);
+  const notdef = glyphIndex.get(0);
   let x = 0;
   let minX = Number.POSITIVE_INFINITY;
   let minY = Number.POSITIVE_INFINITY;
@@ -55,6 +56,8 @@ export function layoutText(
     const glyph = glyphIndex.get(char.codePointAt(0) ?? Number.NaN);
     if (!glyph) {
       missing.push(char);
+      // Reserve the .notdef advance so following glyphs keep their positions.
+      if (notdef) x += notdef.advanceWidth + letterSpacing;
       continue;
     }
     glyphs.push({ glyph, x });
@@ -136,9 +139,15 @@ export function renderTextToSVG(text: string, font: FontData, options: TextSVGOp
   const background = options.backgroundColor
     ? `<rect x="${vbX}" y="${vbY}" width="${vbWidth}" height="${vbHeight}" fill="${options.backgroundColor}"/>`
     : "";
+  // Surface missing glyphs on the root element; renderers never silently drop
+  // characters without a detectable trace.
+  const missingAttr =
+    layout.missing.length > 0
+      ? ` data-missing="${layout.missing.map((c) => `U+${(c.codePointAt(0) ?? 0).toString(16).toUpperCase()}`).join(" ")}"`
+      : "";
 
   return [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${(vbWidth * scale).toFixed(2)}" height="${(vbHeight * scale).toFixed(2)}" viewBox="${vbX.toFixed(2)} ${vbY.toFixed(2)} ${vbWidth.toFixed(2)} ${vbHeight.toFixed(2)}">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" data-missing${missingAttr} width="${(vbWidth * scale).toFixed(2)}" height="${(vbHeight * scale).toFixed(2)}" viewBox="${vbX.toFixed(2)} ${vbY.toFixed(2)} ${vbWidth.toFixed(2)} ${vbHeight.toFixed(2)}">`,
     background,
     `<g fill="${fill}"${stroke}>${paths}</g>`,
     "</svg>",

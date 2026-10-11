@@ -50,6 +50,10 @@
     ".": {
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs"
+    },
+    "./subset": {
+      "types": "./dist/subset.d.mts",
+      "import": "./dist/subset.mjs"
     }
   },
   "scripts": {
@@ -71,7 +75,7 @@
     "@types/opentype.js": "1.3.10"
   },
   "peerDependencies": {
-    "@napi-rs/canvas": "^0.1.82"
+    "@napi-rs/canvas": "^1.0.0"
   },
   "peerDependenciesMeta": {
     "@napi-rs/canvas": {

@@ -26,7 +26,7 @@ async function getGlyphsFromFont(): Promise<GlyphData[]> {
     // Parse the Roboto font file
     const fontPath = join(process.cwd(), "Roboto-Regular.ttf");
     const fontBuffer = readFileSync(fontPath);
-    const parsedFont = parseFont(fontBuffer);
+    const parsedFont = await parseFont(fontBuffer);
 
     console.log(`✓ Font parsed successfully: ${parsedFont.familyName}`);
     console.log(`✓ Total glyphs available: ${parsedFont.glyphs.length}`);
@@ -101,7 +101,7 @@ async function testUnglyphWorkflow() {
   };
 
   const fontData = createFont(manager.list(), fontOptions);
-  const fontBytes = generateFont(fontData);
+  const fontBytes = await generateFont(fontData);
   console.log(`✓ Font created successfully, format: otf, size: ${fontBytes.length} bytes`);
 
   // 4. Test rendering functionality
@@ -136,7 +136,7 @@ async function testUnglyphWorkflow() {
   // 6. Final test: recreate font
   console.log("\n6. Final test...");
   const finalFontData = createFont(manager.list(), fontOptions);
-  const finalFontBytes = generateFont(finalFontData);
+  const finalFontBytes = await generateFont(finalFontData);
 
   console.log(`🎉 Final results:`);
   console.log(`   Parsed glyphs from Roboto: ${manager.count()}`);
