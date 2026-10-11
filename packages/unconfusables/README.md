@@ -1,290 +1,175 @@
-# unconfusables 🛡️
+# unconfusables
 
-![npm version](https://img.shields.io/npm/v/unconfusables)
-![npm downloads](https://img.shields.io/npm/dw/unconfusables)
-![npm license](https://img.shields.io/npm/l/unconfusables)
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](https://www.contributor-covenant.org/version/2/1/code_of_conduct/)
+Unicode confusable detection, spoof checking, and string normalization based on the Unicode Security Mechanisms (UTS #39). Data is generated from the Unicode 18.0.0 security tables.
 
-A powerful and efficient Unicode confusable characters detection and string normalization library based on Unicode Security Mechanisms (UTS #39).
+## Features
 
-UTS #39 defines security mechanisms for handling Unicode characters, including confusable character mappings for detecting homograph attacks and phishing attempts.
+- **Prototype lookup** — the full UTS #39 confusables table (6,700+ mappings, target sequences supported)
+- **Skeleton normalization** — NFD → confusable mapping → NFD, with default-ignorable removal
+- **Intentional confusables** — the curated `intentional.txt` pair list for low-false-positive spoof detection
+- **Identifier profiling** — UTS #39 `Identifier_Status` / `Identifier_Type` range checks
+- **Script analysis** — mixed-script detection and restriction levels via the `unconfusables/script` subpath
+- **Pure ESM** with full TypeScript definitions
 
-## ✨ Features
-
-- 🔍 **Confusable Detection**: Identify characters that can be visually confused with others
-- 🔧 **String Normalization**: Convert strings to their canonical forms
-- 🎲 **Random Replacement**: Replace characters with random confusable alternatives
-- 🛡️ **Security Applications**: Detect potential phishing attacks and homograph attacks
-- 🌐 **Unicode Support**: Comprehensive support for Unicode confusable mappings
-- ⚡️ **High Performance**: Efficient lookup algorithms with 6296+ confusable mappings
-- 📝 **TypeScript**: Full TypeScript support with comprehensive type definitions
-- 🔄 **Bidirectional Lookup**: Forward and reverse confusable character lookup
-- 🎭 **Variation Generation**: Generate all possible confusable variations of strings
-- 📊 **Metadata Access**: Access confusable dataset information and statistics
-
-## 📥 Installation
+## Installation
 
 ```bash
-# Using npm
-npm install unconfusables
-
-# Using yarn
-yarn add unconfusables
-
-# Using pnpm
 pnpm add unconfusables
 ```
 
-## 🚀 Basic Usage
+## Basic Usage
 
 ```typescript
 import {
   getConfusables,
-  normalizeString,
+  getConfusablePrototype,
+  getConfusableSources,
+  skeleton,
   areConfusable,
+  detectConfusables,
   getConfusableVariations,
-  getRandomConfusable,
   randomizeConfusables,
 } from "unconfusables";
 
-// Character confusable lookup
-console.log(getConfusables("0"));
-// { source: "0", target: ["O"], type: "MA", description: "..." }
+// Prototype lookup: the target is the replacement sequence from confusables.txt
+getConfusables("0");
+// => { target: "O", type: "MA" }
+getConfusablePrototype("\u030B");
+// => "\u0301\u0301" (combining double acute maps to two grave accents)
 
-console.log(getConfusables("1"));
-// { source: "1", target: ["l"], type: "MA", description: "..." }
+// Reverse lookup: all sources whose prototype equals the given sequence
+getConfusableSources("O");
+// => ["0", "O", "\u039F", "\u041E", ...]
 
-// String normalization
-console.log(normalizeString("paypa1")); // "paypal"
-console.log(normalizeString("g00gle")); // "gOOgle"
-console.log(normalizeString("admin")); // "adrin"
+// UTS #39 skeleton: NFD, map, NFD. Default-ignorable code points are dropped.
+skeleton("pa\u200Bypal"); // => "paypal"
+areConfusable("paypal", "paypa1"); // => true
 
-// Confusable detection
-console.log(areConfusable("0l", "Ol")); // true
-console.log(areConfusable("paypal", "paypa1")); // true
-console.log(areConfusable("google", "goog1e")); // true
+// Position-level detection (index is the code point index after NFD)
+detectConfusables("g00gle");
+// => [{ index: 1, char: "0", target: "O", type: "MA" }, ...]
 
-// Generate confusable variations
-const variations = getConfusableVariations("admin");
-console.log(variations); // ["admin", "adrin", "adnin"]
+// Every single-character substitution that keeps the same skeleton
+getConfusableVariations("admin");
 
-// Random character replacement
-console.log(getRandomConfusable("a")); // Random confusable of "a"
-console.log(getRandomConfusable("0")); // "O" or other confusable
-
-// With options: only MA type, exclude certain characters
-console.log(getRandomConfusable("a", { type: "MA", exclude: new Set(["a", "A"]) }));
-
-// Random string replacement (30% probability)
-const randomized = randomizeConfusables("paypal", { probability: 0.3 });
-console.log(randomized); // "paypal" with some characters randomly replaced
+// Replace characters with their prototype sequences (for visual tests)
+randomizeConfusables("paypal", { probability: 0.3 });
 ```
 
-## 🔧 Advanced Usage
+## Intentional Confusables
 
-### 🌐 Unicode Security Applications
+The full table is broad; `intentional.txt` is the curated subset recommended for spoof detection.
 
 ```typescript
-import { normalizeString, areConfusable, getConfusableVariations } from "unconfusables";
+import { getIntentionalTargets, detectIntentional, areIntentionalPair } from "unconfusables";
 
-// Phishing detection
-function detectPhishingUrl(url: string) {
-  const normalized = normalizeString(url);
-  const legitimateSites = ["paypal.com", "google.com", "microsoft.com"];
-
-  for (const site of legitimateSites) {
-    if (normalized.includes(normalizeString(site))) {
-      return { suspicious: true, looksLike: site };
-    }
-  }
-  return { suspicious: false };
-}
-
-console.log(detectPhishingUrl("paypa1.com"));
-// { suspicious: true, looksLike: "paypal.com" }
-
-console.log(detectPhishingUrl("g00gle.com"));
-// { suspicious: true, looksLike: "google.com" }
+getIntentionalTargets("C"); // => ["\u0421", "\u216D"] (Cyrillic Es, Roman numeral one hundred)
+detectIntentional("pa\u0443pal");
+// => [{ index: 2, char: "\u0443", targets: ["y"] }]
+areIntentionalPair("A", "\u0391"); // => true
 ```
 
-### 🎭 String Variation Generation
+## Identifier Profiling
+
+```typescript
+import { getIdentifierStatus, getIdentifierTypes } from "unconfusables";
+
+getIdentifierStatus("A"); // "Allowed"
+getIdentifierStatus("\u2C13"); // "Restricted" (unlisted defaults to Restricted)
+getIdentifierTypes("A"); // ["Recommended"]
+getIdentifierTypes("-"); // ["Inclusion"]
+```
+
+## Script Analysis (subpath export)
+
+Script data (UCD Scripts + ScriptExtensions + CLDR metadata) ships separately to keep the main entry small:
 
 ```typescript
 import {
-  getConfusableVariations,
-  getConfusableSources,
-  getRandomConfusable,
-  randomizeConfusables,
-} from "unconfusables";
+  isIdentifierWellFormed,
+  getScript,
+  getAugmentedScriptSet,
+  isMixedScript,
+  getRestrictionLevel,
+} from "unconfusables/script";
 
-// Generate all possible confusable variations
-const text = "admin";
-const variations = getConfusableVariations(text);
-console.log(`"${text}" has ${variations.length} confusable variations:`);
-variations.forEach((v) => console.log(`  - ${v}`));
+getScript("\u610F"); // "Hani"
+isMixedScript("cyrillic\u0442\u0435\u043A\u0441\u0442"); // true
 
-// Random character replacement
-const randomChar = getRandomConfusable("a");
-console.log(`Random confusable for "a": ${randomChar}`);
+// UAX #31 well-formedness (XID_Start / XID_Continue, default-ignorables skipped)
+isIdentifierWellFormed("hello"); // true
+isIdentifierWellFormed("1abc"); // false (identifiers cannot start with a digit)
 
-// With options: only MA type
-const randomMA = getRandomConfusable("a", { type: "MA" });
-console.log(`Random MA confusable for "a": ${randomMA}`);
-
-// Excluding specific characters
-const randomExcluded = getRandomConfusable("a", {
-  exclude: new Set(["a", "A"]),
-});
-console.log(`Random confusable for "a" excluding "a"/"A": ${randomExcluded}`);
-
-// Randomize entire string with options
-const randomString = randomizeConfusables("paypal", {
-  type: "MA",
-  probability: 0.4,
-});
-console.log(`Randomized "paypal" (40% probability, MA only): ${randomString}`);
-
-// Check what characters can be confused with a target character
-const sources = getConfusableSources("O");
-console.log(`Characters that look like "O": ${sources.slice(0, 10).join(", ")}...`);
-// Characters that look like "O": ⒇, ⑽, 🄞, ⒛, ㏳, ㍬, ㏽, Ꜵ, Ю, ⒑...
+// UTS #39 5.2 restriction levels, strictest to loosest.
+// Fails the profile (Restricted Identifier_Status or not well-formed) => "unrestricted".
+getRestrictionLevel("hello"); // "ascii-only"
+getRestrictionLevel("1abc"); // "unrestricted"
+getRestrictionLevel("\u65E5\u672C\u8A9E"); // "single-script"
+getRestrictionLevel("abc\u304A\u308A\u304C\u307F"); // "highly-restrictive"
 ```
 
-### 📊 Dataset Information
+## API
 
-```typescript
-import { getMetadata, confusables } from "unconfusables";
+### Character lookup
 
-const metadata = getMetadata();
-console.log(`Unicode Confusables Dataset:`);
-console.log(`  Version: ${metadata.version}`);
-console.log(`  Total mappings: ${metadata.totalMappings}`);
-console.log(`  Type distribution:`, metadata.typeDistribution);
+| Function                                         | Description                                                   |
+| ------------------------------------------------ | ------------------------------------------------------------- |
+| `getConfusables(char): ConfusableRecord \| null` | Prototype mapping for a character                             |
+| `getConfusablePrototype(char): string`           | The prototype sequence, or the character itself when unmapped |
+| `getConfusableSources(prototype): string[]`      | All characters whose prototype equals the given sequence      |
 
-// Find interesting mappings
-const interestingMappings = Object.entries(confusables.confusables)
-  .filter(([_, record]) => record.target.length > 1)
-  .slice(0, 5);
+### Skeleton and detection
 
-console.log("\nMulti-target mappings:");
-interestingMappings.forEach(([source, record]) => {
-  console.log(`  '${source}' -> ${record.target.map((t) => `'${t}'`).join(", ")}`);
-});
-```
+| Function                                                   | Description                                               |
+| ---------------------------------------------------------- | --------------------------------------------------------- |
+| `skeleton(text, options?): string`                         | UTS #39 skeleton; `{ type }` filters MA/MI/X, default all |
+| `normalizeString(text, type?): string`                     | Skeleton with a type filter (default `"MA"`)              |
+| `normalizeStringAll(text): string`                         | Skeleton across all types                                 |
+| `areConfusable(a, b, type?): boolean`                      | Skeleton equality check                                   |
+| `detectConfusables(text, options?): ConfusableDetection[]` | Position-level detections (NFD code point indices)        |
+| `getConfusableVariations(text, options?): string[]`        | All single-character substitutions with equal skeleton    |
+| `randomizeConfusables(text, { probability }?): string`     | Replace characters with their prototypes at random        |
 
-### 🔒 Security Scenarios
+### Intentional pairs
 
-```typescript
-import { areConfusable, normalizeString, getConfusablesVariations } from "unconfusables";
+| Function                                          | Description                                     |
+| ------------------------------------------------- | ----------------------------------------------- |
+| `getIntentionalTargets(char): string[]`           | Curated confusable targets for a character      |
+| `detectIntentional(text): IntentionalDetection[]` | Position-level intentional detections           |
+| `areIntentionalPair(a, b): boolean`               | Whether two characters form an intentional pair |
 
-// Homograph attack detection
-function detectHomographAttack(str1: string, str2: string): boolean {
-  return areConfusable(str1, str2, "MA"); // Only Major confusables
-}
+### Identifier profiling
 
-// Domain security check
-function checkDomainSecurity(domain: string): {
-  safe: boolean;
-  risks: string[];
-  variations: string[];
-} {
-  const variations = getConfusableVariations(domain);
-  const risks = [];
+| Function                                               | Description                                                     |
+| ------------------------------------------------------ | --------------------------------------------------------------- |
+| `getIdentifierStatus(char): "Allowed" \| "Restricted"` | UTS #39 Identifier_Status (unlisted = Restricted)               |
+| `getIdentifierTypes(char): string[]`                   | UTS #39 Identifier_Type values (unlisted = `["Not_Character"]`) |
 
-  // Check for common high-risk confusables
-  const riskyChars = ["а", "о", "с", "е", "і"]; // Cyrillic lookalikes
-  const normalized = normalizeString(domain);
+### Dataset access
 
-  for (const char of riskyChars) {
-    if (domain.includes(char) && domain !== normalized) {
-      risks.push(`Contains risky character: ${char}`);
-    }
-  }
+| Export                              | Type                 | Description                                                |
+| ----------------------------------- | -------------------- | ---------------------------------------------------------- |
+| `confusables`                       | `ConfusablesDataset` | Full prototype table (`{ source: { target, type } }`)      |
+| `intentional`                       | `IntentionalDataset` | Curated pair list (`{ source, target }[]`)                 |
+| `identifierStatus`                  | `RangesDataset`      | Identifier_Status ranges                                   |
+| `identifierType`                    | `RangesDataset`      | Identifier_Type ranges                                     |
+| `defaultIgnorable`                  | `RangesDataset`      | `Default_Ignorable_Code_Point` ranges used by the skeleton |
+| `getReverseLookup(dataset)`         | —                    | Prototype → sources map, cached per dataset                |
+| `getMetadata(): ConfusableMetadata` | —                    | Version, date, mapping count, MA/MI/X distribution         |
 
-  return {
-    safe: risks.length === 0,
-    risks,
-    variations,
-  };
-}
+The `unconfusables/script` subpath adds `scripts`, `scriptExtensions`, `scriptMetadata`, `identifierStatus`, `xidStart`, `xidContinue`, `defaultIgnorable`, `getScript`, `getScriptExtensions`, `getAugmentedScriptSet`, `resolveScriptSet`, `isMixedScript`, `isIdentifierWellFormed`, `getRestrictionLevel`, and `getRestrictionLevelValue`.
 
-console.log(checkDomainSecurity("paypal.com"));
-// { safe: true, risks: [], variations: ["paypal"] }
+## Notes
 
-console.log(checkDomainSecurity("paypa1.com"));
-// { safe: false, risks: ["Contains risky character: 1"], variations: ["paypa1", "paypal"] }
-```
+- `target` values are **sequences**, not alternatives: `\u030B` (combining double acute) maps to `\u0301\u0301` (two grave accents). Joining is already done for you.
+- `detectConfusables` indices are code point indices within the NFD-normalized input, which keeps them aligned with `skeleton` behavior.
+- Data files are generated by `scripts/update.ts` from the pinned Unicode 18.0.0 security tables.
 
-## 📚 API Reference
+## Related
 
-### 🔍 Character Lookup
+- [UTS #39: Unicode Security Mechanisms](https://www.unicode.org/reports/tr39/)
+- [UCD Security Data](https://www.unicode.org/Public/18.0.0/security/)
 
-#### `getConfusables(char: string): ConfusableRecord | null`
+## License
 
-Get confusable mapping for a single character.
-
-### 🔧 String Operations
-
-#### `normalizeString(text: string, type?: ConfusableType): string`
-
-Normalize string by replacing confusable characters with their targets.
-
-#### `normalizeStringAll(text: string): string`
-
-Normalize string using all confusable types.
-
-#### `areConfusable(str1: string, str2: string, type?: ConfusableType): boolean`
-
-Check if two strings are confusable with each other.
-
-#### `getConfusableVariations(text: string, type?: ConfusableType): string[]`
-
-Get all possible confusable variations of a string.
-
-### 📊 Dataset Information
-
-#### `getMetadata(): ConfusableMetadata`
-
-Get metadata about the confusables dataset.
-
-#### `getConfusableSources(char: string): string[]`
-
-Get all characters that can be confusable with the given character.
-
-### 🌐 Raw Data Access
-
-#### `confusables: ConfusableMap`
-
-Access the complete confusable mapping dataset for advanced usage.
-
-## 🔧 Configuration
-
-### Confusable Types
-
-- **"MA"** (Major): High-priority confusables that are most likely to cause confusion
-- **"MI"** (Minor): Less likely confusables
-- **"X"**: Other confusable relationships
-
-```typescript
-// Only apply Major confusables (default)
-console.log(normalizeString("text", "MA"));
-
-// Apply all confusable types
-console.log(normalizeStringAll("text"));
-```
-
-## ⚡ Performance
-
-- 📈 **6296+ confusable mappings** from Unicode UTS #39
-- 🚀 **O(1) character lookup** with hash table
-- 💾 **Efficient string processing** with optimized algorithms
-- 📦 **Small footprint** despite comprehensive Unicode support
-
-## 🔗 Related
-
-- [Unicode Security Mechanisms (UTS #39)](https://www.unicode.org/reports/tr39/)
-- [Unicode Confusables Table](https://www.unicode.org/reports/tr39/#confusables)
-
-## 📄 License
-
-[MIT](../../LICENSE) © [By Sages](https://www.bysages.com/)
+MIT © [By Sages](https://www.bysages.com/)

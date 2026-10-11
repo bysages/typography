@@ -1,5 +1,6 @@
 import {
   getConfusables,
+  getConfusablePrototype,
   getConfusableSources,
   normalizeString,
   normalizeStringAll,
@@ -7,6 +8,7 @@ import {
   getConfusableVariations,
   getMetadata,
   confusables,
+  getReverseLookup,
 } from "unconfusables";
 
 function testBasicFunctions() {
@@ -24,11 +26,9 @@ function testBasicFunctions() {
   chars.forEach((char) => {
     const mapping = getConfusables(char);
     if (mapping) {
-      console.log(
-        `   '${char}' -> ${mapping.target.map((t) => `'${t}'`).join(", ")} (${mapping.type})`,
-      );
+      console.log(`   '${char}' -> '${mapping.target}' (${mapping.type})`);
     } else {
-      const sources = getConfusableSources(char);
+      const sources = getConfusableSources(getConfusablePrototype(char));
       console.log(
         `   '${char}' <- ${
           sources.length > 0
@@ -149,14 +149,14 @@ function showDatasetInfo() {
   console.log("📈 Dataset Information:\n");
 
   const totalMappings = Object.keys(confusables.confusables).length;
-  const totalTargets = Object.keys(confusables.reverseLookup).length;
+  const totalTargets = getReverseLookup(confusables).size;
 
   // Find some interesting mappings
-  const interestingMappings: Array<[string, string[]]> = [];
+  const interestingMappings: Array<[string, string]> = [];
   for (const [source, record] of Object.entries(confusables.confusables)) {
     if (
       record.target.length > 1 ||
-      (source.charCodeAt(0) > 127 && record.target[0].charCodeAt(0) <= 127)
+      (source.codePointAt(0)! > 127 && record.target.codePointAt(0)! <= 127)
     ) {
       interestingMappings.push([source, record.target]);
       if (interestingMappings.length >= 10) break;
@@ -164,14 +164,14 @@ function showDatasetInfo() {
   }
 
   console.log(`   Total source characters: ${totalMappings}`);
-  console.log(`   Total target characters: ${totalTargets}`);
-  console.log(`   Interesting mappings (multi-target or Unicode):`);
-  interestingMappings.slice(0, 5).forEach(([source, targets]) => {
-    const sourceCode = source.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0");
-    const targetCodes = targets.map(
-      (t: string) => `'${t}' (${t.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0")})`,
-    );
-    console.log(`     U+${sourceCode} '${source}' -> [${targetCodes.join(", ")}]`);
+  console.log(`   Total prototype sequences: ${totalTargets}`);
+  console.log("   Interesting mappings (sequence targets or non-ASCII sources):");
+  interestingMappings.slice(0, 5).forEach(([source, target]) => {
+    const sourceCode = source.codePointAt(0)!.toString(16).toUpperCase().padStart(4, "0");
+    const targetCodes = Array.from(target)
+      .map((t) => `'${t}' (U+${t.codePointAt(0)!.toString(16).toUpperCase().padStart(4, "0")})`)
+      .join(", ");
+    console.log(`     U+${sourceCode} '${source}' -> ${targetCodes}`);
   });
 
   console.log();

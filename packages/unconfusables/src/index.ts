@@ -1,15 +1,19 @@
 /**
  * Unicode Confusables Library
  *
- * A library for handling Unicode confusable characters and string normalization.
- * Based on Unicode Security Mechanisms (UTS #39).
+ * Handling of Unicode confusable characters, spoof detection, and string
+ * normalization based on Unicode Security Mechanisms (UTS #39).
  */
 
-// Export all types
 export * from "./types";
 
-// Export all utility functions
 export * from "./utils";
 
-// Export raw data for advanced usage
-export { confusables } from "./data";
+export {
+  confusables,
+  intentional,
+  identifierStatus,
+  identifierType,
+  defaultIgnorable,
+  getReverseLookup,
+} from "./data";

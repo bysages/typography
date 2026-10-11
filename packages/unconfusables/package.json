@@ -42,6 +42,10 @@
     ".": {
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs"
+    },
+    "./script": {
+      "types": "./dist/script.d.mts",
+      "import": "./dist/script.mjs"
     }
   },
   "scripts": {
