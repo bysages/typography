@@ -2,7 +2,7 @@
   "name": "typography-monorepo",
   "version": "0.0.0",
   "private": true,
-  "description": "Typography toolkit featuring Unicode confusables detection and string normalization",
+  "description": "By Sages monorepo for Unicode text security, unified OCR, and font parsing, rendering, creation, and subsetting",
   "keywords": [
     "attack",
     "confusables",

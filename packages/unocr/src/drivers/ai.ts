@@ -14,6 +14,7 @@ import type {
   OutputType,
   RecognizesOptions,
 } from "..";
+import { DEFAULT_PARALLEL } from "../concurrency";
 import { formatDocument } from "../document";
 
 export type AIDriverOptions<T extends OutputType = OutputType> = DriverOptions<T> & {
@@ -33,15 +34,20 @@ export type AIDriverOptions<T extends OutputType = OutputType> = DriverOptions<T
 };
 
 const DEFAULT_SYSTEM =
-  "Extract all text from this image and return it as HTML. Use appropriate tags like h1-h6 for headings, p for paragraphs, and ul/ol for lists.";
+  "Extract all text from this image and return bare HTML without Markdown code fences. Use appropriate tags like h1-h6 for headings, p for paragraphs, and ul/ol for lists.";
 
 function isElement(node: Root["children"][number]): node is Element {
   return node.type === "element";
 }
 
 /** Derive per-block lines from the AI HTML output (no positional data). */
+function stripCodeFence(text: string): string {
+  const match = text.match(/^```(?:html)?\s*\n([\s\S]*?)\s*```$/);
+  return match?.[1] ?? text;
+}
+
 export function htmlToDocument(html: string): OCRDocument {
-  const root = fromHtml(html);
+  const root = fromHtml(stripCodeFence(html.trim()));
   const lines: OCRLine[] = [];
 
   const visit = (node: Root | Element) => {
@@ -61,7 +67,7 @@ export function htmlToDocument(html: string): OCRDocument {
     const text = textContent(root).trim();
     if (text.length > 0) lines.push({ text });
   }
-  return { text: lines.map((line) => line.text).join("\n\n"), lines };
+  return { text: lines.map((line) => line.text).join("\n"), lines };
 }
 
 function textContent(node: Root | Element): string {
@@ -127,7 +133,7 @@ export default function aiDriver<TOutputType extends OutputType>(
       inputs: OCRInput[],
       recognizesOptions: RecognizesOptions = {},
     ): Promise<OCRResult<TOutputType>[]> => {
-      const parallel = Math.max(1, recognizesOptions.parallel || inputs.length);
+      const parallel = Math.max(1, recognizesOptions.parallel ?? DEFAULT_PARALLEL);
       const results: OCRResult<TOutputType>[] = Array.from({ length: inputs.length });
       const failures: { index: number; reason: unknown }[] = [];
 

@@ -4,6 +4,8 @@
  * normalized against the rendered image dimensions.
  */
 
+import { toUint8Array } from "undio";
+
 import type { Driver, DriverOptions, OCRDocument, OCRLine, OCRResult, OutputType } from "..";
 import { formatDocument } from "../document";
 
@@ -26,10 +28,12 @@ async function createTextDetector(): Promise<TextDetectorLike> {
   return new detector();
 }
 
-async function toImageBitmapSource(
-  input: Parameters<typeof createImageBitmap>[0],
-): Promise<ImageBitmap> {
-  return createImageBitmap(input);
+async function toImageBitmapSource(input: unknown): Promise<ImageBitmap> {
+  // Blob is the only universally native ImageBitmapSource; normalize URLs,
+  // data URLs, buffers, and typed arrays through undio first.
+  if (typeof Blob !== "undefined" && input instanceof Blob) return createImageBitmap(input);
+  const bytes = await toUint8Array(input as never);
+  return createImageBitmap(new Blob([bytes]));
 }
 
 export type WebDriverOptions<T extends OutputType = OutputType> = DriverOptions<T>;
@@ -46,7 +50,7 @@ export default function webDriver<T extends OutputType = OutputType>(
 
     recognize: async (input): Promise<OCRResult<T>> => {
       detector = detector ?? (await createTextDetector());
-      const bitmap = await toImageBitmapSource(input as Parameters<typeof createImageBitmap>[0]);
+      const bitmap = await toImageBitmapSource(input);
       try {
         const detections = await detector.detect(bitmap);
         const lines: OCRLine[] = detections

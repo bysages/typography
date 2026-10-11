@@ -29,6 +29,14 @@ export function documentToHast(document: OCRDocument): Root {
     data: { ocr: { line } },
     children: [{ type: "text", value: line.text }],
   })) as Element[];
+  // Keep html and hast equivalent when a driver provides only plain text.
+  if (children.length === 0 && document.text.length > 0) {
+    children.push({
+      type: "element",
+      tagName: "p",
+      children: [{ type: "text", value: document.text }],
+    } as Element);
+  }
   const root: Root = {
     type: "root",
     data: {
@@ -43,6 +51,11 @@ export function documentToHast(document: OCRDocument): Root {
 }
 
 /** Format an OCRDocument into the requested output type. */
-export function formatDocument(document: OCRDocument, outputType?: OutputType): string | Root {
-  return outputType === "hast" ? documentToHast(document) : documentToHtml(document);
+export function formatDocument<T extends OutputType = "html">(
+  document: OCRDocument,
+  outputType?: T,
+): T extends "hast" ? Root : string {
+  return (
+    outputType === "hast" ? documentToHast(document) : documentToHtml(document)
+  ) as T extends "hast" ? Root : string;
 }

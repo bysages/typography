@@ -70,7 +70,7 @@ importers:
         version: 0.2.0
     devDependencies:
       '@napi-rs/system-ocr':
-        specifier: 1.2.0
+        specifier: ^1.2.0
         version: 1.2.0
       ai:
         specifier: ^7.0.137

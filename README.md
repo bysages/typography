@@ -1,160 +1,128 @@
-# Typography
+# By Sages Typography
 
-![GitHub](https://img.shields.io/github/license/bysages/typography)
+[![npm downloads](https://img.shields.io/npm/dw/unconfusables)](https://www.npmjs.com/package/unconfusables)
+[![GitHub Stars](https://img.shields.io/github/stars/bysages/typography)](https://github.com/bysages/typography/stargazers)
+![GitHub License](https://img.shields.io/github/license/bysages/typography)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](https://www.contributor-covenant.org/version/2/1/code_of_conduct/)
 
-> Typography toolkit featuring Unicode confusables detection, OCR capabilities, and font glyph manipulation
+> Typography is the By Sages typography toolkit: Unicode-aware text security, unified OCR across system and AI engines, and font engineering for parsing, rendering, creation, and subsetting — one set of composable packages with runtime-neutral TypeScript APIs.
+
+[Report Issues](https://github.com/bysages/typography/issues) · [Discussions](https://github.com/bysages/typography/discussions)
+
+⭐ **If Typography is useful to you, a star helps other developers find it.**
+
+## Why Typography?
+
+- 🔐 **Text that can be checked** — `unconfusables` implements Unicode Security Mechanisms with confusable skeletons, intentional-confusable detection, identifier profiling, script analysis, and restriction levels.
+- 🧠 **One OCR contract** — `unocr` normalizes image input and results, then lets you swap system OCR, Tesseract CLI, Tesseract.js, browser Shape Detection, or an AI vision model without changing application code.
+- 🔤 **Fonts without a bespoke pipeline** — `unglyph` reads font metadata, glyphs, variation axes, and color-format capabilities; renders glyphs; writes TrueType and CFF-based OpenType; and subsets with HarfBuzz.
+- 🌍 **Same code across runtimes** — core APIs are typed ESM designed for Node and modern browsers, with platform-specific engines isolated behind optional drivers or optional rendering dependencies.
+- 🧩 **Composable by design** — each package solves one part of the typography stack, so a security audit, an OCR service, and a font tool can share the same foundation without pulling in the rest.
 
 ## Packages
 
-This is a monorepo that contains the following packages:
-
-- **[unconfusables](./packages/unconfusables/README.md)** - Unicode confusables detection and string normalization library
-- **[unocr](./packages/unocr/README.md)** - Unified OCR library with multi-driver support for Tesseract.js and AI models
-- **[unglyph](./packages/unglyph/README.md)** - Unified font glyph manipulation library with simple API for parsing, creating, and modifying fonts
+| Package                                             | Version                                            | Description                                                    |
+| --------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------------------- |
+| [unconfusables](./packages/unconfusables/README.md) | ![npm](https://img.shields.io/npm/v/unconfusables) | Unicode confusables, identifier profiling, and script analysis |
+| [unocr](./packages/unocr/README.md)                 | ![npm](https://img.shields.io/npm/v/unocr)         | Unified OCR with native, CLI, browser, WASM, and AI drivers    |
+| [unglyph](./packages/unglyph/README.md)             | ![npm](https://img.shields.io/npm/v/unglyph)       | Font parsing, rendering, creation, metadata, and subsetting    |
 
 ## Quick Start
 
-### Installation
+Install the package for the task:
 
 ```bash
-# Clone the repository
-git clone https://github.com/bysages/typography.git
-cd typography
-
-# Install dependencies
-pnpm install
+pnpm add unconfusables
+# or unocr / unglyph
 ```
 
-### Basic Usage
+Check whether text relies on visually confusable characters:
 
-```typescript
-// Unicode confusables detection with unconfusables
-import { getConfusables, normalizeString, areConfusable } from "unconfusables";
+```ts
+import { areConfusable, detectConfusables, skeleton } from "unconfusables";
 
-console.log(getConfusables("0")); // { source: "0", target: ["O"], type: "MA" }
-console.log(normalizeString("paypa1")); // "paypal"
-console.log(areConfusable("0l", "Ol")); // true
+skeleton("pa\u200Bypal"); // "paypal"
+areConfusable("paypal", "paypa1"); // true
+detectConfusables("g00gle");
+```
 
-import { toString } from "hast-util-to-string";
-// OCR with unocr
+Recognize text with the best OCR backend available on the current host:
+
+```ts
 import { createOCRManager } from "unocr";
-import tesseractDriver from "unocr/drivers/tesseract";
+import autoDriver from "unocr/drivers/auto";
 
-const ocr = createOCRManager({
-  driver: tesseractDriver({ langs: "eng" }),
-});
-
-const result = await ocr.recognize(imageBuffer);
-const text = toString(result);
-console.log(text); // Extracted text
-
-// Font manipulation with unglyph
-import { parseFont, createFont, generateFont, createGlyphManager, renderGlyph } from "unglyph";
-
-// Parse existing font
-const font = parseFont(fontBuffer);
-console.log(`Font: ${font.familyName}, ${font.glyphs.length} glyphs`);
-
-// Create custom font
-const manager = createGlyphManager();
-manager.add({
-  index: 1,
-  unicode: 65, // 'A'
-  name: "A",
-  advanceWidth: 600,
-  path: {
-    commands: [
-      { type: "move", x: 300, y: 0 },
-      { type: "line", x: 100, y: 700 },
-      { type: "line", x: 500, y: 700 },
-      { type: "line", x: 300, y: 0 },
-    ],
-  },
-});
-
-const fontData = createFont(manager.list(), {
-  familyName: "MyFont",
-  styleName: "Regular",
-  unitsPerEm: 1000,
-});
-
-// Generate font file
-const fontBytes = generateFont(fontData, { format: "otf" });
-
-// Render glyph to SVG
-const svg = renderGlyph(manager.findByUnicode(65), {
-  size: 100,
-  color: "#2563eb",
-  padding: 20,
-});
+const ocr = createOCRManager({ driver: autoDriver() });
+const result = await ocr.recognize(image);
+await ocr.dispose();
 ```
 
-### Development
+Parse and render a font, or turn glyph paths back into a font file:
 
-```bash
-# Development mode
-pnpm dev
+```ts
+import { createFont, generateFont, parseFont, renderGlyphToSVG } from "unglyph";
 
-# Build the project
-pnpm build
+const source = await parseFont(fontBytes);
+const glyph = source.glyphs.find((item) => item.unicode === 65);
+const svg = renderGlyphToSVG(glyph, { size: 64 });
 
-# Run linting
-pnpm lint
-
-# Test unconfusables functionality
-node playground/unconfusables.ts
-
-# Test unocr functionality
-node playground/unocr/tesseract.ts
-
-# Test unglyph functionality
-node playground/unglyph.ts
+const font = createFont(glyphs, { familyName: "Example", styleName: "Regular" });
+const bytes = await generateFont(font, { format: "ttf" });
 ```
 
-## Contributing
+## Development
 
-We welcome contributions! Here's how to get started:
+### Prerequisites
 
-### Quick Setup
+- **Node.js** 20.x or higher
+- **pnpm** 10.x or higher
+- **Git** for version control
 
-1. **Fork the repository** on GitHub
-2. **Clone your fork**:
+### Getting Started
+
+1. **Clone the repository**:
 
    ```bash
-   git clone https://github.com/YOUR_USERNAME/typography.git
+   git clone https://github.com/bysages/typography.git
    cd typography
    ```
 
-3. **Add upstream remote**:
-
-   ```bash
-   git remote add upstream https://github.com/bysages/typography.git
-   ```
-
-4. **Install dependencies**:
+2. **Install dependencies and build packages**:
 
    ```bash
    pnpm install
    ```
 
-5. **Development mode**:
+3. **Start from a playground** when you want to explore a package:
 
    ```bash
    pnpm dev
    ```
 
-### Development Workflow
+### Development Commands
 
-1. **Code**: Follow our project standards
-2. **Test**: `pnpm build`
-3. **Commit**: Use conventional commits (`feat:`, `fix:`, etc.)
-4. **Push**: Push to your fork
-5. **Submit**: Create a Pull Request to upstream repository
+```bash
+pnpm build        # Build every package
+pnpm check        # Format, lint, and type check
+pnpm test         # Run all tests
+pnpm release      # Run package release tasks
+```
+
+The `playground/` directory keeps runnable examples for each package; use those examples as integration checks while changing parser, driver, or Unicode-data behavior.
+
+## Versioning
+
+This project follows [Semantic Versioning](https://semver.org/). While the major version is `0` (pre-1.0), breaking API changes are released as **minor** version bumps (`0.x.0`) rather than patch releases — the public API is expected to keep evolving until the `1.0.0` stabilization release. Pin exact versions in downstream projects if you require stability between minor updates.
+
+## Contributing
+
+We welcome contributions! Use conventional commits (`feat:`, `fix:`, and related types), add or update tests for behavior changes, and run `pnpm check` and `pnpm test` before submitting a pull request.
 
 ## Support & Community
 
 - 📫 [Report Issues](https://github.com/bysages/typography/issues)
+
+If Typography is useful to you, a [⭐ star](https://github.com/bysages/typography/stargazers) helps other developers find it.
 
 ## License
 

@@ -31,6 +31,8 @@ export function readImageSize(bytes: Uint8Array): { width: number; height: numbe
         offset += 1;
         continue;
       }
+      // JPEG allows byte stuffing/padding, so locate the actual marker byte.
+      while (offset + 1 < bytes.length && bytes[offset + 1] === 0xff) offset += 1;
       const marker = bytes[offset + 1];
       if (
         marker >= 0xc0 &&

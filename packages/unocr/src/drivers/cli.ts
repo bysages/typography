@@ -30,7 +30,7 @@ export type CliDriverOptions<T extends OutputType = OutputType> = DriverOptions<
 
 export async function isTesseractCliAvailable(command = "tesseract"): Promise<boolean> {
   return new Promise((resolve) => {
-    const child = spawn(command, ["--version"], { stdio: "ignore" });
+    const child = spawn(command, ["--version"], { stdio: "ignore", windowsHide: true });
     child.on("error", () => resolve(false));
     child.on("close", (code) => resolve(code === 0));
   });
@@ -171,7 +171,10 @@ export function hocrToDocument(hocr: string): OCRDocument {
 
 function run(command: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(command, args, {
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+    });
     const stdout: Buffer[] = [];
     let stderr = "";
     child.stdout.on("data", (chunk) => {
@@ -188,6 +191,24 @@ function run(command: string, args: string[]): Promise<string> {
   });
 }
 
+function detectImageExtension(bytes: Uint8Array): string {
+  if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50) return "input.png";
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return "input.jpg";
+  }
+  if (
+    bytes.length >= 12 &&
+    new TextDecoder("latin1").decode(bytes.subarray(0, 4)) === "RIFF" &&
+    new TextDecoder("latin1").decode(bytes.subarray(8, 12)) === "WEBP"
+  ) {
+    return "input.webp";
+  }
+  if (bytes.length >= 6 && new TextDecoder("latin1").decode(bytes.subarray(0, 3)) === "GIF") {
+    return "input.gif";
+  }
+  return "input.bin";
+}
+
 export default function cliDriver<T extends OutputType = OutputType>(
   options: CliDriverOptions<T> = {} as CliDriverOptions<T>,
 ): Driver<T, CliDriverOptions<T>> {
@@ -201,7 +222,7 @@ export default function cliDriver<T extends OutputType = OutputType>(
       const bytes = await toUint8Array(input);
       const dir = await mkdtemp(join(tmpdir(), "unocr-"));
       try {
-        const imagePath = join(dir, "input");
+        const imagePath = join(dir, detectImageExtension(bytes));
         await writeFile(imagePath, bytes);
         const cliArgs = [imagePath, "stdout", ...(langs ? ["-l", langs] : []), ...args, "hocr"];
         const hocr = await run(command, cliArgs);
