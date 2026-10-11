@@ -1,10 +1,11 @@
 {
   "name": "unocr",
   "version": "0.0.3",
-  "description": "Unified OCR library with multi-driver support for Tesseract.js and AI models, providing structured text extraction using hast-based output format",
+  "description": "Unified OCR library with native, CLI, WASM, browser, and AI drivers, producing a shared structured document with lines, words, and normalized boxes",
   "keywords": [
     "ai",
     "artificial-intelligence",
+    "bounding-box",
     "computer-vision",
     "document-analysis",
     "gpt",
@@ -15,16 +16,21 @@
     "multimodal",
     "nodejs",
     "ocr",
+    "ocr-document",
     "ocr-engine",
     "openai",
     "optical-character-recognition",
     "structured-data",
+    "system-ocr",
     "tesseract",
     "text-extraction",
     "text-recognition",
+    "textdetector",
     "typescript",
     "vercel-ai",
-    "vision"
+    "vision",
+    "visionkit",
+    "windows-media-ocr"
   ],
   "homepage": "https://github.com/bysages/typography#readme",
   "bugs": {
@@ -68,10 +74,12 @@
     "undio": "0.2.0"
   },
   "devDependencies": {
+    "@napi-rs/system-ocr": "1.2.0",
     "ai": "^7.0.137",
     "tesseract.js": "^7.0.0"
   },
   "peerDependencies": {
+    "@napi-rs/system-ocr": "1.2.0",
     "ai": "^7.0.137",
     "tesseract.js": "^7.0.0"
   },
@@ -80,6 +88,9 @@
       "optional": true
     },
     "tesseract.js": {
+      "optional": true
+    },
+    "@napi-rs/system-ocr": {
       "optional": true
     }
   }

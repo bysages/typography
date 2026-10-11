@@ -6,6 +6,38 @@ export type { Root } from "hast";
 
 export type OutputType = "html" | "hast";
 
+/** Normalized bounding box, top-left origin, all values in 0..1 relative to the image. */
+export interface OCRBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface OCRWord {
+  text: string;
+  confidence?: number;
+  box?: OCRBox;
+}
+
+export interface OCRLine {
+  text: string;
+  confidence?: number;
+  box?: OCRBox;
+  words?: OCRWord[];
+}
+
+/**
+ * Driver-agnostic OCR intermediate representation. Every driver produces this
+ * internally; html/hast outputs are derived from it so structured data is
+ * available everywhere (attached as `data.ocr` on hast nodes).
+ */
+export interface OCRDocument {
+  text: string;
+  confidence?: number;
+  lines: OCRLine[];
+}
+
 export type OCRResult<T extends OutputType = OutputType> = T extends "hast" ? Root : string;
 
 export type OCRInput = DataType;
@@ -44,3 +76,13 @@ export interface OCRManagerOptions<TOutputType extends OutputType> {
 }
 
 export type MaybePromise<T> = T | Promise<T>;
+
+declare module "hast" {
+  interface Data {
+    ocr?: {
+      text?: string;
+      line?: OCRLine;
+      confidence?: number;
+    };
+  }
+}
