@@ -114,13 +114,32 @@ export interface SVGRenderOptions extends BaseRenderOptions {
 }
 
 /**
+ * Minimal 2D canvas context surface the renderer needs; structurally
+ * compatible with the browser CanvasRenderingContext2D and @napi-rs/canvas.
+ */
+export interface CanvasContext2D {
+  save(): void;
+  restore(): void;
+  translate(x: number, y: number): void;
+  scale(x: number, y: number): void;
+  beginPath(): void;
+  closePath(): void;
+  moveTo(x: number, y: number): void;
+  lineTo(x: number, y: number): void;
+  quadraticCurveTo(cx: number, cy: number, x: number, y: number): void;
+  bezierCurveTo(cx1: number, cy1: number, cx2: number, cy2: number, x: number, y: number): void;
+  fill(): void;
+  fillStyle: string | CanvasGradient | CanvasPattern;
+}
+
+/**
  * Canvas rendering options
  */
 export interface CanvasRenderOptions extends BaseRenderOptions {
   /** Font units per em for scaling. Defaults to 1000. */
   unitsPerEm?: number;
   /** Canvas 2D rendering context */
-  ctx: any; // Compatible with both browser Canvas and @napi-rs/canvas
+  ctx: CanvasContext2D;
   /** X position */
   x: number;
   /** Y position */

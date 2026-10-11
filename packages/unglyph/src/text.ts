@@ -5,6 +5,7 @@
  */
 
 import type { BoundingBox, FontData, GlyphData, SVGRenderOptions } from "./types";
+import { escapeSvgAttr } from "./utils";
 
 export interface TextLayoutOptions {
   /** Extra spacing between glyphs, in font units. */
@@ -75,7 +76,14 @@ export function layoutText(
       ? { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY }
       : undefined;
 
-  return { glyphs, width: glyphs.length > 0 ? x - letterSpacing : 0, bounds, missing };
+  // Width reflects the accumulated advances even when every character is
+  // missing and only .notdef placeholders occupy the run.
+  return {
+    glyphs,
+    width: text.length > 0 ? Math.max(0, x - letterSpacing) : 0,
+    bounds,
+    missing,
+  };
 }
 
 function commandsToSVG(commands: GlyphData["path"]["commands"], dx: number): string {
@@ -105,6 +113,12 @@ export interface TextSVGOptions extends SVGRenderOptions {
 /** Render laid-out text as a standalone SVG string. */
 export function renderTextToSVG(text: string, font: FontData, options: TextSVGOptions): string {
   const unitsPerEm = font.unitsPerEm ?? 1000;
+  if (!Number.isFinite(options.size) || options.size <= 0) {
+    throw new RangeError(`size must be a positive number, received ${options.size}`);
+  }
+  if (!Number.isFinite(unitsPerEm) || unitsPerEm <= 0) {
+    throw new RangeError(`unitsPerEm must be a positive number, received ${unitsPerEm}`);
+  }
   const scale = options.size / unitsPerEm;
   const padding = options.padding ?? 0;
   const layout = layoutText(text, font, { letterSpacing: options.letterSpacing });
@@ -131,13 +145,13 @@ export function renderTextToSVG(text: string, font: FontData, options: TextSVGOp
   const vbY = bounds.minY - padUnits;
   const vbWidth = bounds.width + padUnits * 2;
   const vbHeight = bounds.height + padUnits * 2;
-  const fill = options.color ?? "#000000";
+  const fill = escapeSvgAttr(options.color ?? "#000000");
   const stroke =
     options.strokeColor && options.strokeWidth
-      ? ` stroke="${options.strokeColor}" stroke-width="${(options.strokeWidth / scale).toFixed(2)}"`
+      ? ` stroke="${escapeSvgAttr(options.strokeColor)}" stroke-width="${(options.strokeWidth / scale).toFixed(2)}"`
       : "";
   const background = options.backgroundColor
-    ? `<rect x="${vbX}" y="${vbY}" width="${vbWidth}" height="${vbHeight}" fill="${options.backgroundColor}"/>`
+    ? `<rect x="${vbX}" y="${vbY}" width="${vbWidth}" height="${vbHeight}" fill="${escapeSvgAttr(options.backgroundColor)}"/>`
     : "";
   // Surface missing glyphs on the root element; renderers never silently drop
   // characters without a detectable trace.
