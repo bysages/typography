@@ -7,7 +7,7 @@ export default defineConfig({
       index: "src/index.ts",
       subset: "src/subsetter.ts",
     },
-    noExternal: [/harfbuzzjs/],
+    deps: { alwaysBundle: [/harfbuzzjs/] },
     plugins: [wasm({ targetEnv: "auto" })],
   },
 });

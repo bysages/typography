@@ -5,6 +5,9 @@ import type * as opentype from "opentype.js";
 const ot = ((opentypeModule as unknown as { default?: typeof opentype }).default ??
   opentypeModule) as typeof opentype;
 
+import { compress as compressWoff2 } from "woff2-encoder";
+
+import { sfntToWoff } from "./subsetter";
 import type { GlyphData, FontOptions, FontData, FontGenerateOptions } from "./types";
 import { convertToOpentypePath } from "./utils";
 
@@ -24,7 +27,10 @@ export function createFont(glyphs: GlyphData[], options: FontOptions): FontData 
 /**
  * Generate font file from FontData
  */
-export function generateFont(fontData: FontData, options: FontGenerateOptions = {}): Uint8Array {
+export async function generateFont(
+  fontData: FontData,
+  options: FontGenerateOptions = {},
+): Promise<Uint8Array> {
   const {
     format = "otf",
     familyName = fontData.familyName || "Untitled Font",
@@ -57,20 +63,26 @@ export function generateFont(fontData: FontData, options: FontGenerateOptions = 
     );
   }
 
-  // Convert our unified glyphs to opentype glyphs
+  // Convert our unified glyphs to opentype glyphs. Only gid 0 is rebuilt here;
+  // an existing space glyph keeps its parsed advance and path.
   for (const glyph of fontData.glyphs) {
-    // Skip space and .notdef as they're already handled
-    if (glyph.unicode === 32 || glyph.unicode === " " || glyph.unicode === 0) {
+    if (glyph.unicode === 0) {
       continue;
     }
 
-    const path = convertToOpentypePath(glyph.path, fontData.ascent || 0);
-    const unicodeValue =
-      typeof glyph.unicode === "string" ? (glyph.unicode.codePointAt(0) ?? 0) : glyph.unicode;
+    const path = convertToOpentypePath(glyph.path, ascender);
+    // The primary mapping is glyph.unicode; codePoints adds any further
+    // cmap entries the parser discovered for the same glyph.
+    const primary =
+      typeof glyph.unicode === "string"
+        ? (glyph.unicode.codePointAt(0) ?? 0)
+        : (glyph.unicode ?? 0);
+    const unicodes = [...new Set([primary, ...(glyph.codePoints ?? [])])];
 
     const otGlyph = new ot.Glyph({
-      name: glyph.name || `glyph${unicodeValue}`,
-      unicode: unicodeValue,
+      name: glyph.name || `glyph${primary}`,
+      unicode: primary,
+      unicodes,
       advanceWidth: glyph.advanceWidth,
       path: path,
     });
@@ -88,23 +100,19 @@ export function generateFont(fontData: FontData, options: FontGenerateOptions = 
     glyphs: otGlyphs,
   });
 
-  // Convert to buffer based on format
+  const bytes = new Uint8Array(font.toArrayBuffer());
+  // opentype.js writes CFF outlines under the OTTO signature; that sfnt is
+  // valid as-is and is what the container formats wrap.
   switch (format) {
-    case "ttf":
-    case "otf": {
-      // opentype.js 2.x hardcodes the OTTO signature while writing glyf
-      // outlines, which strict consumers such as subset-font reject.
-      const bytes = new Uint8Array(font.toArrayBuffer());
-      bytes.set([0x00, 0x01, 0x00, 0x00], 0);
+    case "otf":
       return bytes;
-    }
     case "woff":
-      // For WOFF, we'd need additional library support
-      throw new Error("WOFF format not yet implemented");
+      return sfntToWoff(bytes);
     case "woff2":
-      // For WOFF2, we'd need additional library support
-      throw new Error("WOFF2 format not yet implemented");
+      return compressWoff2(bytes);
     default:
-      throw new Error(`Unsupported format: ${format as string}`);
+      throw new Error(
+        `Unsupported font format: ${format as string}. TrueType (glyf) outlines are not generated; use "otf", "woff", or "woff2".`,
+      );
   }
 }

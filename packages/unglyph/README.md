@@ -17,7 +17,7 @@ Built on top of proven font libraries like **fontkit** and **opentype.js**, ungl
 - 🎨 **SVG Rendering**: Render glyphs to SVG with customizable styles
 - 📦 **TypeScript**: Full TypeScript support with comprehensive type definitions
 - 🏭 **Factory Pattern**: Consistent factory functions for easy instantiation
-- 🔄 **Format Support**: Support for major font formats (TTF, OTF, WOFF, WOFF2)
+- 🔄 **Format Support**: Read TTF/OTF/WOFF/WOFF2 (ttc included); write CFF-based OTF plus WOFF/WOFF2 containers
 - 🎯 **Simple API**: Clean, intuitive API following KISS principles
 
 ## Font Subsetting (subpath export)
@@ -41,7 +41,7 @@ const regular = await subsetFont(vfBytes, text, {
 ```typescript
 import { parseFont, layoutText, renderTextToSVG } from "unglyph";
 
-const font = parseFont(fontBytes);
+const font = await parseFont(fontBytes);
 const layout = layoutText("Hello", font, { letterSpacing: 0 });
 console.log(layout.width); // advance width in font units
 
@@ -72,7 +72,7 @@ pnpm add unglyph
 import { parseFont, type FontData } from "unglyph";
 
 // Parse font file
-const font: FontData = parseFont(fontBuffer);
+const font: FontData = await parseFont(fontBuffer);
 
 console.log(`Font: ${font.familyName}`);
 console.log(`Format: ${font.format}`);
@@ -135,7 +135,7 @@ const fontOptions: FontOptions = {
 const fontData: FontData = createFont(manager.list(), fontOptions);
 
 // Generate font file (returns Uint8Array)
-const fontBytes = generateFont(fontData, { format: "otf" });
+const fontBytes = await generateFont(fontData, { format: "otf" });
 // Save to file
 fs.writeFileSync("myfont.otf", fontBytes);
 ```
@@ -205,7 +205,7 @@ import {
 
 async function processFont(inputBuffer: ArrayBuffer) {
   // 1. Parse existing font
-  const originalFont: FontData = parseFont(inputBuffer);
+  const originalFont: FontData = await parseFont(inputBuffer);
 
   // 2. Create manager and copy glyphs
   const manager = createGlyphManager(originalFont.glyphs);

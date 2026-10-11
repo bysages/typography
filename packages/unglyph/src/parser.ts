@@ -7,9 +7,10 @@ import { convertFromFontkitGlyph } from "./utils";
 /**
  * Parse font file and return FontData
  */
-export function parseFont(input: FontInput): FontData {
-  // Convert input to Uint8Array using undio
-  const uint8Array = toUint8Array(input);
+export async function parseFont(input: FontInput): Promise<FontData> {
+  // undio normalizes every supported input (paths and streams included),
+  // and several of them only resolve asynchronously.
+  const uint8Array = await toUint8Array(input);
 
   // Parse font using fontkit
   const fontResult = fontkit.create(uint8Array);
@@ -78,6 +79,16 @@ export function parseFont(input: FontInput): FontData {
 
     const glyph = convertFromFontkitGlyph(fontkitGlyph, fontkitGlyph.id, font.ascent, codePoint);
     glyphsById.set(fontkitGlyph.id, glyph);
+  }
+  // Keep the .notdef glyph (gid 0) so layout can fall back to it for
+  // missing characters even when the cmap has no mapping for it.
+  if (!glyphsById.has(0)) {
+    const notdef = (
+      font as unknown as { glyphs?: { get(id: number): import("fontkit").Glyph | undefined } }
+    ).glyphs?.get(0);
+    if (notdef) {
+      glyphsById.set(0, convertFromFontkitGlyph(notdef, 0, font.ascent, 0));
+    }
   }
   fontData.glyphs = [...glyphsById.values()];
 
