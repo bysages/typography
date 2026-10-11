@@ -33,6 +33,26 @@ describe("hocrToDocument", () => {
     expect(hocrToDocument(hocr).text).toBe("Hello w\u00F6rld");
   });
 
+  it("normalizes each page against its own frame", () => {
+    const multi = `<!DOCTYPE html><html><body>
+<div class="ocr_page" title="bbox 0 0 1000 500">
+  <div class="ocr_line" title="bbox 100 100 900 140">
+    <span class="ocrx_word" title="bbox 100 100 900 140; x_wconf 90">one</span>
+  </div>
+</div>
+<div class="ocr_page" title="bbox 0 0 500 250">
+  <div class="ocr_line" title="bbox 50 50 450 90">
+    <span class="ocrx_word" title="bbox 50 50 450 90; x_wconf 90">two</span>
+  </div>
+</div>
+</body></html>`;
+    const lines = hocrToDocument(multi).lines;
+    expect(lines[0].box?.x).toBeCloseTo(0.1);
+    expect(lines[0].box?.width).toBeCloseTo(0.8);
+    expect(lines[1].box?.x).toBeCloseTo(0.1);
+    expect(lines[1].box?.width).toBeCloseTo(0.8);
+  });
+
   it("falls back to content bounds without an ocr_page div", () => {
     const doc = hocrToDocument(
       `<div class="ocr_line" title="bbox 100 100 300 140">

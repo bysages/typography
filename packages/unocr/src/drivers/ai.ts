@@ -1,4 +1,5 @@
 import { generateText } from "ai";
+import type { LanguageModel } from "ai";
 import type { Element, Root } from "hast";
 import { fromHtml } from "hast-util-from-html";
 import { toBase64 } from "undio";
@@ -16,7 +17,7 @@ import type {
 import { formatDocument } from "../document";
 
 export type AIDriverOptions<T extends OutputType = OutputType> = DriverOptions<T> & {
-  model: any;
+  model: LanguageModel;
   system?: string;
   temperature?: number;
   maxRetries?: number;
@@ -126,22 +127,31 @@ export default function aiDriver<TOutputType extends OutputType>(
       inputs: OCRInput[],
       recognizesOptions: RecognizesOptions = {},
     ): Promise<OCRResult<TOutputType>[]> => {
-      const parallel = recognizesOptions.parallel || inputs.length;
-      const results = await Promise.allSettled(
-        inputs.map((input, index) => {
-          const batchIndex = Math.floor(index / Math.ceil(inputs.length / parallel));
-          const delay = batchIndex * 100;
-          return delay > 0
-            ? new Promise((resolve) => setTimeout(resolve, delay)).then(() => recognize(input))
-            : recognize(input);
-        }),
-      );
+      const parallel = Math.max(1, recognizesOptions.parallel || inputs.length);
+      const results: OCRResult<TOutputType>[] = Array.from({ length: inputs.length });
+      const failures: { index: number; reason: unknown }[] = [];
 
-      return results.map((result) => {
-        if (result.status === "fulfilled") return result.value;
-        console.error("AI OCR processing failed:", result.reason);
-        return formatDocument({ text: "", lines: [] }, outputType) as OCRResult<TOutputType>;
-      });
+      // Fixed-width worker pool so at most `parallel` requests are in flight.
+      let cursor = 0;
+      const runWorker = async () => {
+        while (cursor < inputs.length) {
+          const index = cursor++;
+          try {
+            results[index] = await recognize(inputs[index]);
+          } catch (reason) {
+            failures.push({ index, reason });
+          }
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(parallel, inputs.length) }, runWorker));
+
+      if (failures.length > 0) {
+        throw new AggregateError(
+          failures.map((failure) => failure.reason),
+          "AI OCR failed for " + failures.length + " of " + inputs.length + " inputs",
+        );
+      }
+      return results;
     },
 
     dispose: async () => {},

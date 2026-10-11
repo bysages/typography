@@ -1,6 +1,6 @@
 {
   "name": "unocr",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "description": "Unified OCR library with native, CLI, WASM, browser, and AI drivers, producing a shared structured document with lines, words, and normalized boxes",
   "keywords": [
     "ai",
@@ -74,12 +74,12 @@
     "undio": "0.2.0"
   },
   "devDependencies": {
-    "@napi-rs/system-ocr": "1.2.0",
+    "@napi-rs/system-ocr": "^1.2.0",
     "ai": "^7.0.137",
     "tesseract.js": "^7.0.0"
   },
   "peerDependencies": {
-    "@napi-rs/system-ocr": "1.2.0",
+    "@napi-rs/system-ocr": "^1.2.0",
     "ai": "^7.0.137",
     "tesseract.js": "^7.0.0"
   },

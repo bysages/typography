@@ -19,7 +19,6 @@ Unified OCR library with pluggable drivers: system OCR (macOS VisionKit / Window
 - 🎯 **Driver Architecture**: Extensible driver system for easy engine integration
 - 🤖 **AI-Powered**: Advanced AI vision models for enhanced OCR accuracy
 - 🔧 **Flexible AI Configuration**: Customizable system prompts and model parameters
-- 📊 **Rich Metadata**: Comprehensive processing metadata and engine information
 - 🔧 **Flexible Options**: Customizable OCR options for different use cases
 
 ## 📥 Installation
@@ -34,6 +33,34 @@ yarn add unocr
 # Using pnpm
 pnpm add unocr
 ```
+
+## 🚗 Driver Comparison
+
+| Driver      | Runtime                 | External dependency                   | `langs` type                                   | Notes                                                                                                                                                                                                                                     |
+| ----------- | ----------------------- | ------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `native`    | Node (macOS / Windows)  | `@napi-rs/system-ocr` (optional peer) | `string[]` (BCP 47, e.g. `en-US`)              | System VisionKit / Media OCR; fastest, no model download                                                                                                                                                                                  |
+| `cli`       | Node                    | `tesseract` executable on PATH        | `string` (tesseract codes, e.g. `eng+chi_sim`) | Spawns the binary; needs traineddata installed locally                                                                                                                                                                                    |
+| `tesseract` | Node / browser / worker | `tesseract.js` (optional peer)        | `string \| string[]`                           | Pure WASM; downloads language data on first run unless `langPath` is set                                                                                                                                                                  |
+| `web`       | Browser (Chrome / Edge) | none (Shape Detection API)            | —                                              | `TextDetector` only; limited language control                                                                                                                                                                                             |
+| `ai`        | Universal               | any AI SDK model (optional peer)      | —                                              | Vision-model based; quality depends on the model, no boxes for most providers                                                                                                                                                             |
+| `auto`      | Node                    | depends on chosen backend             | normalized per backend                         | Probes native -> cli -> tesseract; converts `langs` between string and array. Pass BCP 47 tags (e.g. `en-US`) — the native backend expects them, while tesseract codes like `eng` only work once the cli/tesseract backends are selected. |
+
+## 📦 Optional Peer Dependencies
+
+Core drivers (`tesseract.js`, `ai`, `@napi-rs/system-ocr`) are optional peers — install only the backends you use:
+
+```bash
+# WASM OCR (tesseract driver / auto fallback)
+pnpm add tesseract.js
+
+# System OCR on macOS / Windows (native driver)
+pnpm add @napi-rs/system-ocr
+
+# AI vision models (ai driver)
+pnpm add ai
+```
+
+The `cli` driver needs a system `tesseract` binary instead of a package: see <https://github.com/tesseract-ocr/tesseract>. The `web` driver uses the browser's built-in Shape Detection API with no dependency at all.
 
 ## 🚀 Basic Usage
 
@@ -61,13 +88,13 @@ const ocr = createOCRManager({
   }),
 });
 
-// Single image OCR
+// Single image OCR (html string by default; pass outputType: "hast" for a hast Root)
 const result = await ocr.recognize(imageBuffer);
-console.log(result); // hast Root object
+console.log(result);
 
 // Batch OCR with parallel processing
 const results = await ocr.recognizes(imageArray, { parallel: 4 });
-console.log(results); // Array of hast Root objects
+console.log(results);
 
 // Clean up
 await ocr.dispose();
@@ -137,13 +164,13 @@ const ocr = createOCRManager({
   }),
 });
 
-// Single image OCR with AI
+// Single image OCR with AI (html string by default; pass outputType: "hast" for a hast Root)
 const result = await ocr.recognize(imageBuffer);
-console.log(result); // hast Root object
+console.log(result);
 
 // Batch OCR with AI
 const results = await ocr.recognizes(imageArray, { parallel: 2 });
-console.log(results); // Array of hast Root objects
+console.log(results);
 
 // Clean up
 await ocr.dispose();
@@ -263,7 +290,7 @@ import { createOCRManager } from "unocr";
 import tesseractDriver from "unocr/drivers/tesseract";
 
 const ocr = createOCRManager({
-  driver: tesseractDriver({ langs: "eng" }),
+  driver: tesseractDriver({ langs: "eng", outputType: "hast" }),
 });
 
 const result = await ocr.recognize(image);
@@ -271,7 +298,7 @@ const result = await ocr.recognize(image);
 // Convert hast to HTML
 const html = toHtml(result);
 console.log(html);
-// <div class="ocr_page">...</div>
+// <p>...</p> per recognized line
 
 // Extract text content
 function extractText(node): string {
@@ -330,7 +357,7 @@ Universal input type supporting various image formats via undio integration:
 
 #### `OCRResult`
 
-Structured OCR output in hast format for rich document structure.
+HTML string by default; a hast Root when the driver is created with outputType: "hast".
 
 ### 🚗 Available Drivers
 
@@ -338,7 +365,7 @@ Structured OCR output in hast format for rich document structure.
 
 Create a Tesseract.js-based OCR driver with advanced configuration options.
 
-#### `aiDriver(options?: AIDriverOptions)`
+#### `aiDriver(options: AIDriverOptions)`
 
 Create an AI vision-based OCR driver with support for multimodal AI models like GPT-4 Vision.
 

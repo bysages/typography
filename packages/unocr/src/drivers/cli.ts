@@ -74,8 +74,9 @@ interface PixelBox {
 
 interface PixelEntry {
   text: string;
-  confidence: number;
+  confidence: number | undefined;
   box: PixelBox;
+  frame: PixelBox | null;
   words: { text: string; confidence: number; box: PixelBox }[];
 }
 
@@ -83,17 +84,15 @@ interface PixelEntry {
 export function hocrToDocument(hocr: string): OCRDocument {
   const root = fromHtml(hocr);
   const entries: PixelEntry[] = [];
-  let pageBox: PixelBox | null = null;
   let maxX = 1;
   let maxY = 1;
 
-  const collect = (node: Root | Element) => {
+  const collect = (node: Root | Element, page: PixelBox | null = null) => {
     for (const child of node.children) {
       if (!isElement(child)) continue;
       if (hasClassName(child, "ocr_page")) {
         const parsed = parseBbox(child.properties?.title as string | undefined);
-        if (parsed && parsed.x1 > parsed.x0 && parsed.y1 > parsed.y0) pageBox = parsed;
-        collect(child);
+        collect(child, parsed && parsed.x1 > parsed.x0 && parsed.y1 > parsed.y0 ? parsed : null);
       } else if (hasClassName(child, "ocr_line") || hasClassName(child, "ocr_header")) {
         const box = parseBbox(child.properties?.title as string | undefined);
         const words: PixelEntry["words"] = [];
@@ -125,40 +124,47 @@ export function hocrToDocument(hocr: string): OCRDocument {
           const confidence =
             words.length > 0
               ? words.reduce((sum, word) => sum + word.confidence, 0) / words.length
-              : 1;
-          entries.push({ text: lineText, confidence, box, words });
+              : undefined;
+          entries.push({ text: lineText, confidence, box, frame: page, words });
         }
       } else {
-        collect(child);
+        collect(child, page);
       }
     }
   };
 
   collect(root);
 
-  // Normalize against the page frame when hOCR provides one; otherwise
-  // divide by the detected content bounds, matching the tesseract.js driver.
-  const frame = pageBox ?? { x0: 0, y0: 0, x1: maxX, y1: maxY };
-  const frameWidth = Math.max(1, frame.x1 - frame.x0);
-  const frameHeight = Math.max(1, frame.y1 - frame.y0);
+  // Normalize against each page frame when hOCR provides one so multi-page
+  // documents do not share the last page's frame; otherwise divide by the
+  // detected content bounds, matching the tesseract.js driver.
+  const contentFrame: PixelBox = { x0: 0, y0: 0, x1: maxX, y1: maxY };
 
-  const normalize = (box: PixelBox): OCRBox => ({
-    x: (box.x0 - frame.x0) / frameWidth,
-    y: (box.y0 - frame.y0) / frameHeight,
-    width: (box.x1 - box.x0) / frameWidth,
-    height: (box.y1 - box.y0) / frameHeight,
+  const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
+  const normalize = (box: PixelBox, frame: PixelBox): OCRBox => {
+    const frameWidth = Math.max(1, frame.x1 - frame.x0);
+    const frameHeight = Math.max(1, frame.y1 - frame.y0);
+    return {
+      x: clamp01((box.x0 - frame.x0) / frameWidth),
+      y: clamp01((box.y0 - frame.y0) / frameHeight),
+      width: clamp01((box.x1 - box.x0) / frameWidth),
+      height: clamp01((box.y1 - box.y0) / frameHeight),
+    };
+  };
+
+  const lines: OCRLine[] = entries.map((entry) => {
+    const frame = entry.frame ?? contentFrame;
+    return {
+      text: entry.text,
+      confidence: entry.confidence,
+      box: normalize(entry.box, frame),
+      words: entry.words.map((word) => ({
+        text: word.text,
+        confidence: word.confidence,
+        box: normalize(word.box, frame),
+      })),
+    };
   });
-
-  const lines: OCRLine[] = entries.map((entry) => ({
-    text: entry.text,
-    confidence: entry.confidence,
-    box: normalize(entry.box),
-    words: entry.words.map((word) => ({
-      text: word.text,
-      confidence: word.confidence,
-      box: normalize(word.box),
-    })),
-  }));
 
   return { text: lines.map((line) => line.text).join("\n"), lines };
 }

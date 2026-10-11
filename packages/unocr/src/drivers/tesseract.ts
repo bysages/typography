@@ -14,9 +14,16 @@ import type {
   RecognizesOptions,
 } from "..";
 import { formatDocument } from "../document";
+import { readImageSize } from "../image-size";
 
 export type TesseractDriverOptions<TOutputType extends OutputType> =
-  Partial<Tesseract.WorkerOptions> & DriverOptions<TOutputType>;
+  Partial<Tesseract.WorkerOptions> &
+    DriverOptions<TOutputType> & {
+      /** Recognition languages, e.g. "eng+chi_sim". Forwarded to createWorker. */
+      langs?: string | string[];
+      /** OCR engine mode. Defaults to LSTM_ONLY. */
+      oem?: Tesseract.OEM;
+    };
 
 interface PixelBox {
   x0: number;
@@ -32,8 +39,13 @@ interface PixelEntry {
   words: { text: string; confidence: number; box: PixelBox }[];
 }
 
-/** Convert a tesseract.js recognition page into an OCRDocument with normalized boxes. */
-export function pageToDocument(page: Page): OCRDocument {
+/** Clamp a normalized coordinate into the declared 0..1 range. */
+const clamp01 = (value: number): number => Math.min(1, Math.max(0, value));
+
+/** Convert a tesseract.js recognition page into an OCRDocument with normalized boxes.
+ * Boxes are normalized against the source image size when the input bytes can be
+ * sniffed, falling back to the bounding box of the recognized content otherwise. */
+export function pageToDocument(page: Page, source?: Uint8Array): OCRDocument {
   const entries: PixelEntry[] = [];
   let maxX = 1;
   let maxY = 1;
@@ -61,11 +73,15 @@ export function pageToDocument(page: Page): OCRDocument {
     }
   }
 
+  const size = source ? readImageSize(source) : null;
+  const width = size?.width ?? maxX;
+  const height = size?.height ?? maxY;
+
   const normalize = (box: PixelBox): OCRBox => ({
-    x: box.x0 / maxX,
-    y: box.y0 / maxY,
-    width: (box.x1 - box.x0) / maxX,
-    height: (box.y1 - box.y0) / maxY,
+    x: clamp01(box.x0 / width),
+    y: clamp01(box.y0 / height),
+    width: clamp01((box.x1 - box.x0) / width),
+    height: clamp01((box.y1 - box.y0) / height),
   });
 
   const lines: OCRLine[] = entries.map((entry) => ({
@@ -105,7 +121,7 @@ export default function tesseractDriver<TOutputType extends OutputType>(
     const activeWorker = await initializeWorker();
     const imageLike = await toUint8Array(input);
     const result = await activeWorker.recognize(imageLike, {}, { blocks: true, text: true });
-    return pageToDocument(result.data);
+    return pageToDocument(result.data, imageLike);
   };
 
   return {
@@ -146,17 +162,27 @@ export default function tesseractDriver<TOutputType extends OutputType>(
                 text: true,
               },
             );
-            return pageToDocument(result.data);
+            return pageToDocument(result.data, imageLike);
           }),
         );
 
-        return results.map((result) => {
-          if (result.status === "fulfilled") {
-            return formatDocument(result.value, outputType) as OCRResult<TOutputType>;
-          }
-          console.error("OCR processing failed:", result.reason);
-          return formatDocument({ text: "", lines: [] }, outputType) as OCRResult<TOutputType>;
-        });
+        // Surface failures to the caller instead of replacing them with empty
+        // documents, which would be indistinguishable from blank pages.
+        const failures = results.filter((result) => result.status === "rejected");
+        if (failures.length > 0) {
+          throw new AggregateError(
+            failures.map((failure) => (failure as PromiseRejectedResult).reason),
+            `OCR failed for ${failures.length} of ${inputs.length} inputs`,
+          );
+        }
+
+        return results.map(
+          (result) =>
+            formatDocument(
+              (result as PromiseFulfilledResult<OCRDocument>).value,
+              outputType,
+            ) as OCRResult<TOutputType>,
+        );
       } finally {
         await scheduler.terminate();
       }
