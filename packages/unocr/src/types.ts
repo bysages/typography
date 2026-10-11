@@ -1,14 +1,12 @@
-import type { DataType } from "undio";
 import type { Root } from "hast";
+import type { DataType } from "undio";
 
 export type { DataType } from "undio";
 export type { Root } from "hast";
 
 export type OutputType = "html" | "hast";
 
-export type OCRResult<T extends OutputType = OutputType> = T extends "hast"
-  ? Root
-  : string;
+export type OCRResult<T extends OutputType = OutputType> = T extends "hast" ? Root : string;
 
 export type OCRInput = DataType;
 
@@ -39,8 +37,7 @@ export interface Driver<
 }
 
 // Allow Driver to be used with just one generic parameter
-export type DriverOnlyOutput<TOutputType extends OutputType> =
-  Driver<TOutputType>;
+export type DriverOnlyOutput<TOutputType extends OutputType> = Driver<TOutputType>;
 
 export interface OCRManagerOptions<TOutputType extends OutputType> {
   driver: Driver<TOutputType>;

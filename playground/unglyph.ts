@@ -1,11 +1,6 @@
-import {
-  writeFileSync,
-  mkdirSync,
-  readFileSync,
-  existsSync,
-  rmSync,
-} from "node:fs";
+import { writeFileSync, mkdirSync, readFileSync, existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
+
 import { createCanvas } from "@napi-rs/canvas";
 import {
   createFont,
@@ -45,27 +40,21 @@ async function getGlyphsFromFont(): Promise<GlyphData[]> {
     const glyphs: GlyphData[] = [];
 
     if (glyphA) {
-      console.log(
-        `✓ Found glyph A (id: ${glyphA.index}, name: ${glyphA.name || "unnamed"})`,
-      );
+      console.log(`✓ Found glyph A (id: ${glyphA.index}, name: ${glyphA.name || "unnamed"})`);
       glyphs.push(glyphA);
     } else {
       console.log("✗ Glyph A not found in font");
     }
 
     if (glyphB) {
-      console.log(
-        `✓ Found glyph B (id: ${glyphB.index}, name: ${glyphB.name || "unnamed"})`,
-      );
+      console.log(`✓ Found glyph B (id: ${glyphB.index}, name: ${glyphB.name || "unnamed"})`);
       glyphs.push(glyphB);
     } else {
       console.log("✗ Glyph B not found in font");
     }
 
     if (glyphC) {
-      console.log(
-        `✓ Found glyph C (id: ${glyphC.index}, name: ${glyphC.name || "unnamed"})`,
-      );
+      console.log(`✓ Found glyph C (id: ${glyphC.index}, name: ${glyphC.name || "unnamed"})`);
       glyphs.push(glyphC);
     } else {
       console.log("✗ Glyph C not found in font");
@@ -91,9 +80,7 @@ async function testUnglyphWorkflow() {
   const fontGlyphs = await getGlyphsFromFont();
   const manager = createGlyphManager(fontGlyphs);
 
-  console.log(
-    `✓ Manager created successfully with ${manager.count()} glyphs from font`,
-  );
+  console.log(`✓ Manager created successfully with ${manager.count()} glyphs from font`);
 
   // 2. Test manager functionality
   console.log("\n2. Testing manager functionality...");
@@ -115,9 +102,7 @@ async function testUnglyphWorkflow() {
 
   const fontData = createFont(manager.list(), fontOptions);
   const fontBytes = generateFont(fontData);
-  console.log(
-    `✓ Font created successfully, format: otf, size: ${fontBytes.length} bytes`,
-  );
+  console.log(`✓ Font created successfully, format: otf, size: ${fontBytes.length} bytes`);
 
   // 4. Test rendering functionality
   console.log("\n4. Testing rendering functionality...");
@@ -128,9 +113,7 @@ async function testUnglyphWorkflow() {
       color: "#2563eb",
       padding: 20,
     });
-    console.log(
-      `✓ Glyph 'A' rendered successfully, SVG length: ${svg.length} characters`,
-    );
+    console.log(`✓ Glyph 'A' rendered successfully, SVG length: ${svg.length} characters`);
 
     // Save SVG file for inspection
     writeFileSync(join(cacheDir, "glyph_A.svg"), svg);
@@ -165,14 +148,7 @@ async function testUnglyphWorkflow() {
   console.log("\n7. Testing Image rendering for all parsed glyphs...");
 
   // Filter non-empty glyphs and assign colors
-  const colors = [
-    "#000000",
-    "#1e40af",
-    "#dc2626",
-    "#059669",
-    "#7c3aed",
-    "#dc2626",
-  ];
+  const colors = ["#000000", "#1e40af", "#dc2626", "#059669", "#7c3aed", "#dc2626"];
   const nonEmptyGlyphs = fontGlyphs.filter((g) => g.path.commands.length > 0);
 
   for (let i = 0; i < nonEmptyGlyphs.length; i++) {
@@ -316,18 +292,12 @@ async function testUnglyphWorkflow() {
   console.log(`   ✓ SVG rendering: ${join(cacheDir, "glyph_A.svg")}`);
   console.log(`   ✓ Generated images for all glyphs:`);
   console.log(`     - glyph_A.png, glyph_B.png, glyph_C.png (standard PNG)`);
-  console.log(
-    `     - glyph_A_2x.png, glyph_B_2x.png, glyph_C_2x.png (high-res)`,
-  );
+  console.log(`     - glyph_A_2x.png, glyph_B_2x.png, glyph_C_2x.png (high-res)`);
   console.log(`     - glyph_A.jpg, glyph_B.jpg, glyph_C.jpg (JPEG)`);
   console.log(`     - glyph_A.webp, glyph_B.webp, glyph_C.webp (WebP)`);
-  console.log(
-    `   ✓ Debug version: ${join(cacheDir, "glyph_A_debug.png")} (with reference lines)`,
-  );
+  console.log(`   ✓ Debug version: ${join(cacheDir, "glyph_A_debug.png")} (with reference lines)`);
   console.log(`   ✓ Font creation: ${finalFontBytes.length} bytes`);
-  console.log(
-    "\n🎯 unglyph test completed with realistic glyphs and complete image rendering!",
-  );
+  console.log("\n🎯 unglyph test completed with realistic glyphs and complete image rendering!");
 }
 
 // Run test

@@ -2,12 +2,8 @@
  * Unicode Confusables Utility Functions
  */
 
-import type {
-  ConfusableRecord,
-  ConfusableType,
-  RandomConfusableOptions,
-} from "./types";
 import { confusables } from "./data";
+import type { ConfusableRecord, ConfusableType, RandomConfusableOptions } from "./types";
 
 // Get confusable mapping for a character
 export function getConfusables(char: string): ConfusableRecord | null {
@@ -24,10 +20,7 @@ export function getConfusableSources(char: string): string[] {
 }
 
 // Normalize string by replacing confusable characters with their targets
-export function normalizeString(
-  text: string,
-  type: ConfusableType = "MA",
-): string {
+export function normalizeString(text: string, type: ConfusableType = "MA"): string {
   return text
     .split("")
     .map((char) => {
@@ -55,21 +48,14 @@ export function normalizeStringAll(text: string): string {
 }
 
 // Check if two strings are confusable with each other
-export function areConfusable(
-  str1: string,
-  str2: string,
-  type: ConfusableType = "MA",
-): boolean {
+export function areConfusable(str1: string, str2: string, type: ConfusableType = "MA"): boolean {
   const normalized1 = normalizeString(str1, type);
   const normalized2 = normalizeString(str2, type);
   return normalized1 === normalized2;
 }
 
 // Get all possible confusable variations of a string
-export function getConfusableVariations(
-  text: string,
-  type: ConfusableType = "MA",
-): string[] {
+export function getConfusableVariations(text: string, type: ConfusableType = "MA"): string[] {
   const variations = new Set<string>();
   variations.add(text);
 
@@ -78,11 +64,7 @@ export function getConfusableVariations(
 
   for (let i = 0; i < chars.length; i++) {
     const confusable = confusables.confusables[chars[i]];
-    if (
-      confusable &&
-      confusable.type === type &&
-      confusable.target.length > 0
-    ) {
+    if (confusable && confusable.type === type && confusable.target.length > 0) {
       positions.push([i, confusable.target.length]);
     }
   }
@@ -100,10 +82,7 @@ export function getConfusableVariations(
 }
 
 // Replace character with random confusable
-export function getRandomConfusable(
-  char: string,
-  options: RandomConfusableOptions = {},
-): string {
+export function getRandomConfusable(char: string, options: RandomConfusableOptions = {}): string {
   if (char.length === 0) return char;
 
   const confusable = confusables.confusables[char];

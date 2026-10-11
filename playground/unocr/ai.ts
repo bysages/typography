@@ -1,14 +1,13 @@
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { ImageResponse } from "@vercel/og";
 import { toString } from "hast-util-to-string";
 import { createOCRManager } from "unocr";
+
 import aiDriver from "../../packages/unocr/src/drivers/ai";
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
 const openai = createOpenAICompatible({
   name: "openai",
-  baseURL:
-    process.env.OPENAI_COMPATIBLE_URL ||
-    "https://dashscope.aliyuncs.com/compatible-mode/v1",
+  baseURL: process.env.OPENAI_COMPATIBLE_URL || "https://dashscope.aliyuncs.com/compatible-mode/v1",
   apiKey: process.env.OPENAI_API_KEY,
 });
 
@@ -18,9 +17,7 @@ const modelName = process.env.AI_MODEL || "qwen3-vl-flash";
  * Generate test image using Vercel OG and then test OCR recognition with AI driver
  */
 async function testOCRWithOGImage() {
-  console.log(
-    "🦜 Testing unocr with AI driver and @vercel/og generated image...\n",
-  );
+  console.log("🦜 Testing unocr with AI driver and @vercel/og generated image...\n");
 
   // Test text to generate and recognize
   const testText = "Hello AI";
@@ -80,18 +77,13 @@ async function testOCRWithOGImage() {
     console.log("\n📊 Comparison Results:");
     console.log(`Original:   "${testText}"`);
     console.log(`Recognized: "${recognizedText}"`);
-    console.log(
-      `Match:      ${testText === recognizedText ? "✅ YES" : "❌ NO"}`,
-    );
+    console.log(`Match:      ${testText === recognizedText ? "✅ YES" : "❌ NO"}`);
 
     // Clean up
     await ocr.dispose();
     console.log("\n🧹 AI OCR manager disposed successfully");
   } catch (error) {
-    console.error(
-      "\n❌ Test failed:",
-      error instanceof Error ? error.message : error,
-    );
+    console.error("\n❌ Test failed:", error instanceof Error ? error.message : error);
   }
 }
 
@@ -167,10 +159,7 @@ async function testBatchProcessing() {
 
     await ocr.dispose();
   } catch (error) {
-    console.error(
-      "\n❌ Batch test failed:",
-      error instanceof Error ? error.message : error,
-    );
+    console.error("\n❌ Batch test failed:", error instanceof Error ? error.message : error);
   }
 }
 

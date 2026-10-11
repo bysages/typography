@@ -1,6 +1,7 @@
-import type { GlyphData, PathData, PathCommand } from "./types";
 import fontkit from "fontkit";
 import * as opentype from "opentype.js";
+
+import type { GlyphData, PathData, PathCommand } from "./types";
 
 /**
  * Convert our unified PathData to opentype.js Path
@@ -74,10 +75,7 @@ export function convertFromFontkitGlyph(
 /**
  * Convert fontkit.Path to our unified PathData
  */
-function convertFromFontkitPath(
-  fontkitPath: fontkit.Path,
-  ascent?: number,
-): PathData {
+function convertFromFontkitPath(fontkitPath: fontkit.Path, ascent?: number): PathData {
   const commands: PathCommand[] = [];
   const baseline = ascent || 0; // Use ascent as baseline for coordinate conversion
 
@@ -152,10 +150,7 @@ function convertFromFontkitPath(
  * Convert our unified GlyphData to mock fontkit.Glyph for SVG generation
  */
 export function convertToFontkitGlyph(glyph: GlyphData): fontkit.Glyph {
-  const codePoint =
-    typeof glyph.unicode === "string"
-      ? glyph.unicode.charCodeAt(0)
-      : glyph.unicode;
+  const codePoint = typeof glyph.unicode === "string" ? glyph.unicode.charCodeAt(0) : glyph.unicode;
 
   const path: fontkit.Path = {
     commands: convertPathCommandsToFontkit(glyph.path.commands),
@@ -235,9 +230,7 @@ export function convertToFontkitGlyph(glyph: GlyphData): fontkit.Glyph {
 /**
  * Convert our PathCommand array to fontkit PathCommand array
  */
-function convertPathCommandsToFontkit(
-  commands: PathCommand[],
-): fontkit.PathCommand[] {
+function convertPathCommandsToFontkit(commands: PathCommand[]): fontkit.PathCommand[] {
   return commands.map((cmd) => {
     switch (cmd.type) {
       case "move":

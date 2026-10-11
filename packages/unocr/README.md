@@ -65,16 +65,14 @@ await ocr.dispose();
 ### AI Vision Driver
 
 ```typescript
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createOCRManager } from "unocr";
 import aiDriver from "unocr/drivers/ai";
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
 // Create AI model client
 const openai = createOpenAICompatible({
   name: "openai",
-  baseURL:
-    process.env.OPENAI_COMPATIBLE_URL ||
-    "https://dashscope.aliyuncs.com/compatible-mode/v1",
+  baseURL: process.env.OPENAI_COMPATIBLE_URL || "https://dashscope.aliyuncs.com/compatible-mode/v1",
   apiKey: process.env.OPENAI_API_KEY,
 });
 
@@ -133,15 +131,13 @@ const result = await ocr.recognize(image);
 #### AI Vision Custom Configuration
 
 ```typescript
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createOCRManager } from "unocr";
 import aiDriver from "unocr/drivers/ai";
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
 const openai = createOpenAICompatible({
   name: "openai",
-  baseURL:
-    process.env.OPENAI_COMPATIBLE_URL ||
-    "https://dashscope.aliyuncs.com/compatible-mode/v1",
+  baseURL: process.env.OPENAI_COMPATIBLE_URL || "https://dashscope.aliyuncs.com/compatible-mode/v1",
   apiKey: process.env.OPENAI_API_KEY,
 });
 
@@ -212,9 +208,9 @@ await ocr.dispose();
 ### 🔍 Working with Hast Output
 
 ```typescript
+import { toHtml } from "hast-util-to-html";
 import { createOCRManager } from "unocr";
 import tesseractDriver from "unocr/drivers/tesseract";
-import { toHtml } from "hast-util-to-html";
 
 const ocr = createOCRManager({
   driver: tesseractDriver({ langs: "eng" }),
@@ -366,13 +362,13 @@ await ocr.recognizes(images, { parallel: 8 });
 ### 📝 Hast Processing
 
 ```typescript
-import { createOCRManager } from "unocr";
-import tesseractDriver from "unocr/drivers/tesseract";
-import aiDriver from "unocr/drivers/ai";
 import { toHtml } from "hast-util-to-html";
 import { toText } from "hast-util-to-text";
 import { rehype } from "rehype";
 import { unified } from "unified";
+import { createOCRManager } from "unocr";
+import aiDriver from "unocr/drivers/ai";
+import tesseractDriver from "unocr/drivers/tesseract";
 
 // Works with both Tesseract and AI drivers
 const tesseractOcr = createOCRManager({

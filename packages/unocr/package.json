@@ -2,73 +2,78 @@
   "name": "unocr",
   "version": "0.0.3",
   "description": "Unified OCR library with multi-driver support for Tesseract.js and AI models, providing structured text extraction using hast-based output format",
-  "main": "dist/index.mjs",
-  "types": "dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
-  "exports": {
-    ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
-    },
-    "./drivers/*": {
-      "import": "./dist/drivers/*.mjs",
-      "require": "./dist/drivers/*.cjs",
-      "types": "./dist/drivers/*.d.ts"
-    }
-  },
-  "scripts": {
-    "dev": "unbuild --stub",
-    "build": "unbuild",
-    "prepack": "pnpm build"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/bysages/typography.git"
-  },
   "keywords": [
-    "ocr",
-    "optical-character-recognition",
-    "tesseract",
     "ai",
     "artificial-intelligence",
-    "vision",
-    "text-recognition",
-    "image-processing",
     "computer-vision",
-    "multi-language",
-    "typescript",
-    "nodejs",
-    "ocr-engine",
     "document-analysis",
-    "text-extraction",
-    "hocr",
-    "hast",
-    "structured-data",
-    "multimodal",
     "gpt",
+    "hast",
+    "hocr",
+    "image-processing",
+    "multi-language",
+    "multimodal",
+    "nodejs",
+    "ocr",
+    "ocr-engine",
     "openai",
-    "vercel-ai"
+    "optical-character-recognition",
+    "structured-data",
+    "tesseract",
+    "text-extraction",
+    "text-recognition",
+    "typescript",
+    "vercel-ai",
+    "vision"
   ],
+  "homepage": "https://github.com/bysages/typography#readme",
+  "bugs": {
+    "url": "https://github.com/bysages/typography/issues"
+  },
+  "license": "MIT",
   "author": {
     "name": "By Sages",
     "email": "contact@bysages.com",
     "url": "https://www.bysages.com/"
   },
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/bysages/typography/issues"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bysages/typography.git"
   },
-  "homepage": "https://github.com/bysages/typography#readme",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "dist/index.mjs",
+  "types": "dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./drivers/*": {
+      "types": "./dist/drivers/*.d.mts",
+      "import": "./dist/drivers/*.mjs"
+    }
+  },
+  "scripts": {
+    "dev": "basis build --stub",
+    "build": "vp pack",
+    "prepack": "pnpm build",
+    "release": "basis publish"
+  },
   "dependencies": {
-    "@types/hast": "3.0.4",
+    "@types/hast": "3.0.5",
     "hast-util-from-html": "2.0.3",
     "undio": "0.2.0"
   },
+  "devDependencies": {
+    "ai": "^7.0.137",
+    "tesseract.js": "^7.0.0"
+  },
   "peerDependencies": {
-    "ai": "^5.0.97",
-    "tesseract.js": "^6.0.1"
+    "ai": "^7.0.137",
+    "tesseract.js": "^7.0.0"
   },
   "peerDependenciesMeta": {
     "ai": {
@@ -77,9 +82,5 @@
     "tesseract.js": {
       "optional": true
     }
-  },
-  "devDependencies": {
-    "ai": "^5.0.98",
-    "tesseract.js": "^6.0.1"
   }
 }

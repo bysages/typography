@@ -15,11 +15,7 @@ const DATA_DIR = join(__dirname, "..", "src", "data");
 const CONFUSABLES_URL =
   "https://cdn.jsdelivr.net/gh/unicode-org/icu/icu4c/source/data/unidata/confusables.txt";
 
-import type {
-  ConfusableMap,
-  ConfusableRecord,
-  ConfusableType,
-} from "../src/types";
+import type { ConfusableMap, ConfusableRecord, ConfusableType } from "../src/types";
 
 /**
  * Parse confusables.txt content into structured data
@@ -48,9 +44,7 @@ function parseConfusablesFile(content: string): ConfusableMap {
 
     // Parse confusable character mapping lines
     // Format: source ; target ; type # description
-    const match = line.match(
-      /^([0-9A-Fa-f]+)\s*;\s*([0-9A-Fa-f\s]+)\s*;\s*(MA|MI|X)/,
-    );
+    const match = line.match(/^([0-9A-Fa-f]+)\s*;\s*([0-9A-Fa-f\s]+)\s*;\s*(MA|MI|X)/);
     if (!match) continue;
 
     const [, sourceHex, targetHexStr, type] = match;
@@ -60,15 +54,11 @@ function parseConfusablesFile(content: string): ConfusableMap {
 
     // Parse target characters (can be multiple characters)
     const targetHexes = targetHexStr.trim().split(/\s+/);
-    const targetChars = targetHexes.map((hex) =>
-      String.fromCodePoint(parseInt(hex, 16)),
-    );
+    const targetChars = targetHexes.map((hex) => String.fromCodePoint(parseInt(hex, 16)));
 
     // Get description information
     const descriptionMatch = line.match(/#\s*(.+)$/);
-    const description = descriptionMatch
-      ? descriptionMatch[1].trim()
-      : undefined;
+    const description = descriptionMatch ? descriptionMatch[1].trim() : undefined;
 
     const record: ConfusableRecord = {
       source: sourceChar,
@@ -109,9 +99,7 @@ async function fetchConfusablesData(): Promise<string> {
     }
 
     const content = await response.text();
-    console.log(
-      `✅ Successfully fetched confusables.txt (${content.length} bytes)`,
-    );
+    console.log(`✅ Successfully fetched confusables.txt (${content.length} bytes)`);
     return content;
   } catch (error) {
     console.error(`❌ Failed to fetch confusables.txt:`, String(error));
@@ -137,9 +125,7 @@ async function updateConfusablesData() {
     console.log(`   Version: ${data.version}`);
     console.log(`   Date: ${data.date}`);
     console.log(`   Total mappings: ${Object.keys(data.confusables).length}`);
-    console.log(
-      `   Reverse lookup entries: ${Object.keys(data.reverseLookup).length}`,
-    );
+    console.log(`   Reverse lookup entries: ${Object.keys(data.reverseLookup).length}`);
 
     // Save as JSON file
     const filePath = join(DATA_DIR, "confusables.json");
@@ -153,11 +139,7 @@ async function updateConfusablesData() {
     console.log("\n📝 Sample mappings:");
     for (const key of sampleKeys) {
       const record = data.confusables[key];
-      const keyHex = key
-        .charCodeAt(0)
-        .toString(16)
-        .toUpperCase()
-        .padStart(4, "0");
+      const keyHex = key.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0");
       const targetHex = record.target.map((t) =>
         t.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0"),
       );

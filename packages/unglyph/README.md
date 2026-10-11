@@ -205,9 +205,7 @@ async function processFont(inputBuffer: ArrayBuffer) {
 ```typescript
 import { createGlyphManager, createFont, type GlyphData } from "unglyph";
 
-function createIconFont(
-  icons: Array<{ name: string; unicode: number; path: string }>,
-) {
+function createIconFont(icons: Array<{ name: string; unicode: number; path: string }>) {
   const manager = createGlyphManager();
 
   // Add icons as glyphs

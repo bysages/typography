@@ -1,6 +1,7 @@
 import { ImageResponse } from "@vercel/og";
 import { toString } from "hast-util-to-string";
 import { createOCRManager } from "unocr";
+
 import tesseractDriver from "../../packages/unocr/src/drivers/tesseract";
 
 /**
@@ -49,9 +50,7 @@ async function testOCRWithOGImage() {
         langs: "eng",
         logger: (m) => {
           if (m.status === "recognizing text") {
-            process.stdout.write(
-              `\r⏳ OCR Progress: ${Math.round((m.progress || 0) * 100)}%`,
-            );
+            process.stdout.write(`\r⏳ OCR Progress: ${Math.round((m.progress || 0) * 100)}%`);
           }
         },
         outputType: "hast",
@@ -74,18 +73,13 @@ async function testOCRWithOGImage() {
     console.log("\n📊 Comparison Results:");
     console.log(`Original:   "${testText}"`);
     console.log(`Recognized: "${recognizedText}"`);
-    console.log(
-      `Match:      ${testText === recognizedText ? "✅ YES" : "❌ NO"}`,
-    );
+    console.log(`Match:      ${testText === recognizedText ? "✅ YES" : "❌ NO"}`);
 
     // Clean up
     await ocr.dispose();
     console.log("\n🧹 OCR manager disposed successfully");
   } catch (error) {
-    console.error(
-      "\n❌ Test failed:",
-      error instanceof Error ? error.message : error,
-    );
+    console.error("\n❌ Test failed:", error instanceof Error ? error.message : error);
   }
 }
 
@@ -161,10 +155,7 @@ async function testBatchProcessing() {
 
     await ocr.dispose();
   } catch (error) {
-    console.error(
-      "\n❌ Batch test failed:",
-      error instanceof Error ? error.message : error,
-    );
+    console.error("\n❌ Batch test failed:", error instanceof Error ? error.message : error);
   }
 }
 

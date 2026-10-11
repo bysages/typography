@@ -1,19 +1,12 @@
 import * as opentype from "opentype.js";
-import type {
-  GlyphData,
-  FontOptions,
-  FontData,
-  FontGenerateOptions,
-} from "./types";
+
+import type { GlyphData, FontOptions, FontData, FontGenerateOptions } from "./types";
 import { convertToOpentypePath } from "./utils";
 
 /**
  * Create font from glyph data using opentype.js
  */
-export function createFont(
-  glyphs: GlyphData[],
-  options: FontOptions,
-): FontData {
+export function createFont(glyphs: GlyphData[], options: FontOptions): FontData {
   return {
     familyName: options.familyName,
     unitsPerEm: options.unitsPerEm || 1000,
@@ -26,10 +19,7 @@ export function createFont(
 /**
  * Generate font file from FontData
  */
-export function generateFont(
-  fontData: FontData,
-  options: FontGenerateOptions = {},
-): Uint8Array {
+export function generateFont(fontData: FontData, options: FontGenerateOptions = {}): Uint8Array {
   const {
     format = "otf",
     familyName = fontData.familyName || "Untitled Font",
@@ -48,9 +38,7 @@ export function generateFont(
   });
 
   // Create space glyph if not present
-  const hasSpace = fontData.glyphs.some(
-    (g) => g.unicode === 32 || g.unicode === " ",
-  );
+  const hasSpace = fontData.glyphs.some((g) => g.unicode === 32 || g.unicode === " ");
   const otGlyphs: opentype.Glyph[] = [notdefGlyph];
 
   if (!hasSpace) {
@@ -73,9 +61,7 @@ export function generateFont(
 
     const path = convertToOpentypePath(glyph.path);
     const unicodeValue =
-      typeof glyph.unicode === "string"
-        ? glyph.unicode.charCodeAt(0)
-        : glyph.unicode;
+      typeof glyph.unicode === "string" ? glyph.unicode.charCodeAt(0) : glyph.unicode;
 
     const otGlyph = new opentype.Glyph({
       name: glyph.name || `glyph${unicodeValue}`,

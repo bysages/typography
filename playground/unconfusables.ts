@@ -61,9 +61,7 @@ function testNormalization() {
   testCases.forEach((str) => {
     const normalized = normalizeString(str);
     const normalizedAll = normalizeStringAll(str);
-    console.log(
-      `   '${str}' -> '${normalized}' (MA) -> '${normalizedAll}' (all)`,
-    );
+    console.log(`   '${str}' -> '${normalized}' (MA) -> '${normalizedAll}' (all)`);
   });
 
   console.log();
@@ -111,12 +109,7 @@ function testSecurityScenarios() {
   console.log("🔒 Security Scenarios:\n");
 
   // Simulate phishing detection
-  const suspiciousUrls = [
-    "g00gle.com",
-    "paypa1.com",
-    "m1crosoft.com",
-    "amaz0n.com",
-  ];
+  const suspiciousUrls = ["g00gle.com", "paypa1.com", "m1crosoft.com", "amaz0n.com"];
 
   console.log("🚨 Phishing detection:");
   suspiciousUrls.forEach((url) => {
@@ -174,18 +167,11 @@ function showDatasetInfo() {
   console.log(`   Total target characters: ${totalTargets}`);
   console.log(`   Interesting mappings (multi-target or Unicode):`);
   interestingMappings.slice(0, 5).forEach(([source, targets]) => {
-    const sourceCode = source
-      .charCodeAt(0)
-      .toString(16)
-      .toUpperCase()
-      .padStart(4, "0");
+    const sourceCode = source.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0");
     const targetCodes = targets.map(
-      (t: string) =>
-        `'${t}' (${t.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0")})`,
+      (t: string) => `'${t}' (${t.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0")})`,
     );
-    console.log(
-      `     U+${sourceCode} '${source}' -> [${targetCodes.join(", ")}]`,
-    );
+    console.log(`     U+${sourceCode} '${source}' -> [${targetCodes.join(", ")}]`);
   });
 
   console.log();

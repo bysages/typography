@@ -73,9 +73,7 @@ console.log(getRandomConfusable("a")); // Random confusable of "a"
 console.log(getRandomConfusable("0")); // "O" or other confusable
 
 // With options: only MA type, exclude certain characters
-console.log(
-  getRandomConfusable("a", { type: "MA", exclude: new Set(["a", "A"]) }),
-);
+console.log(getRandomConfusable("a", { type: "MA", exclude: new Set(["a", "A"]) }));
 
 // Random string replacement (30% probability)
 const randomized = randomizeConfusables("paypal", { probability: 0.3 });
@@ -87,11 +85,7 @@ console.log(randomized); // "paypal" with some characters randomly replaced
 ### 🌐 Unicode Security Applications
 
 ```typescript
-import {
-  normalizeString,
-  areConfusable,
-  getConfusableVariations,
-} from "unconfusables";
+import { normalizeString, areConfusable, getConfusableVariations } from "unconfusables";
 
 // Phishing detection
 function detectPhishingUrl(url: string) {
@@ -152,9 +146,7 @@ console.log(`Randomized "paypal" (40% probability, MA only): ${randomString}`);
 
 // Check what characters can be confused with a target character
 const sources = getConfusableSources("O");
-console.log(
-  `Characters that look like "O": ${sources.slice(0, 10).join(", ")}...`,
-);
+console.log(`Characters that look like "O": ${sources.slice(0, 10).join(", ")}...`);
 // Characters that look like "O": ⒇, ⑽, 🄞, ⒛, ㏳, ㍬, ㏽, Ꜵ, Ю, ⒑...
 ```
 
@@ -176,20 +168,14 @@ const interestingMappings = Object.entries(confusables.confusables)
 
 console.log("\nMulti-target mappings:");
 interestingMappings.forEach(([source, record]) => {
-  console.log(
-    `  '${source}' -> ${record.target.map((t) => `'${t}'`).join(", ")}`,
-  );
+  console.log(`  '${source}' -> ${record.target.map((t) => `'${t}'`).join(", ")}`);
 });
 ```
 
 ### 🔒 Security Scenarios
 
 ```typescript
-import {
-  areConfusable,
-  normalizeString,
-  getConfusablesVariations,
-} from "unconfusables";
+import { areConfusable, normalizeString, getConfusablesVariations } from "unconfusables";
 
 // Homograph attack detection
 function detectHomographAttack(str1: string, str2: string): boolean {

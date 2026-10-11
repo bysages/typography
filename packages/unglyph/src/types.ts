@@ -140,10 +140,7 @@ export interface ImageRenderOptions extends BaseRenderOptions {
 /**
  * Unified render options type
  */
-export type RenderOptions =
-  | SVGRenderOptions
-  | CanvasRenderOptions
-  | ImageRenderOptions;
+export type RenderOptions = SVGRenderOptions | CanvasRenderOptions | ImageRenderOptions;
 
 /**
  * Batch glyph operation
