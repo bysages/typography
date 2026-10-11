@@ -1,6 +1,8 @@
 /**
- * Unicode Confusables Data Update Script
- * Fetches the latest confusables data from Unicode ICU and updates local JSON files
+ * Unicode Security Data Update Script
+ * Fetches UTS #39 confusables/identifier data from unicode.org plus UCD
+ * script data (Scripts, ScriptExtensions) and CLDR script metadata used by
+ * the mixed-script / restriction-level APIs, and writes compact JSON datasets.
  */
 
 import { writeFileSync } from "node:fs";
@@ -11,165 +13,277 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const DATA_DIR = join(__dirname, "..", "src", "data");
 
-// Unicode confusables data source URL
-const CONFUSABLES_URL =
-  "https://cdn.jsdelivr.net/gh/unicode-org/icu/icu4c/source/data/unidata/confusables.txt";
+const BASE_URL = "https://www.unicode.org/Public/18.0.0/security/";
+const UCD_URL = "https://www.unicode.org/Public/18.0.0/ucd/";
 
-import type { ConfusableMap, ConfusableRecord, ConfusableType } from "../src/types";
+interface Dataset {
+  version: string;
+  date: string;
+  confusables: Record<string, { target: string; type: "MA" | "MI" | "X" }>;
+}
 
-/**
- * Parse confusables.txt content into structured data
- */
-function parseConfusablesFile(content: string): ConfusableMap {
-  const lines = content.split("\n");
-  const confusables: Record<string, ConfusableRecord> = {};
-  const reverseLookup: Record<string, string[]> = {};
+interface IntentionalDataset {
+  version: string;
+  date: string;
+  pairs: { source: string; target: string }[];
+}
 
+interface RangesDataset {
+  version: string;
+  ranges: [number, number, string][];
+}
+
+function parseRangeBoundary(token: string): number {
+  return parseInt(token, 16);
+}
+
+function parseRangesFile(content: string): RangesDataset {
+  let version = "unknown";
+  const ranges: [number, number, string][] = [];
+
+  for (const line of content.split("\n")) {
+    if (line.startsWith("# Version:")) version = line.split(":")[1].trim();
+    if (version === "unknown") {
+      const fileVersion = line.match(/^#\s*\w+-(\d+\.\d+\.\d+)\.txt/);
+      if (fileVersion) version = fileVersion[1];
+    }
+    if (line.startsWith("#") || line.trim() === "") continue;
+
+    const match = line.match(
+      /^([0-9A-Fa-f]+)(?:\.\.([0-9A-Fa-f]+))?\s*;\s*([A-Za-z_][A-Za-z_0-9\s]*?)\s*(?:#.*)?$/,
+    );
+    if (!match) continue;
+
+    const [, startHex, endHex, value] = match;
+    const start = parseRangeBoundary(startHex);
+    const end = endHex ? parseRangeBoundary(endHex) : start;
+    ranges.push([start, end, value.trim()]);
+  }
+
+  ranges.sort((a, b) => a[0] - b[0]);
+  return { version, ranges };
+}
+
+const SOURCES = [
+  {
+    file: "confusables.json",
+    url: `${BASE_URL}confusables.txt`,
+    label: "confusables.txt",
+    kind: "confusables" as const,
+  },
+  {
+    file: "intentional.json",
+    url: `${BASE_URL}intentional.txt`,
+    label: "intentional.txt",
+    kind: "intentional" as const,
+  },
+  {
+    file: "identifier-status.json",
+    url: `${BASE_URL}IdentifierStatus.txt`,
+    label: "IdentifierStatus.txt",
+    kind: "ranges" as const,
+  },
+  {
+    file: "identifier-type.json",
+    url: `${BASE_URL}IdentifierType.txt`,
+    label: "IdentifierType.txt",
+    kind: "ranges" as const,
+  },
+  {
+    file: "scripts.json",
+    url: `${UCD_URL}Scripts.txt`,
+    label: "Scripts.txt",
+    kind: "ranges" as const,
+  },
+  {
+    file: "script-extensions.json",
+    url: `${UCD_URL}ScriptExtensions.txt`,
+    label: "ScriptExtensions.txt",
+    kind: "ranges" as const,
+  },
+  {
+    file: "script-metadata.json",
+    url: "https://cdn.jsdelivr.net/gh/unicode-org/cldr@main/common/properties/scriptMetadata.txt",
+    label: "scriptMetadata.txt",
+    kind: "script-metadata" as const,
+  },
+  {
+    file: "default-ignorable.json",
+    url: `${UCD_URL}DerivedCoreProperties.txt`,
+    label: "DerivedCoreProperties.txt",
+    kind: "derived-properties" as const,
+  },
+] as const;
+
+/** UCD property value aliases: long Script names -> 4-letter codes (Latin -> Latn). */
+async function fetchScriptNameMap(): Promise<Map<string, string>> {
+  const content = await fetchText(`${UCD_URL}PropertyValueAliases.txt`, "PropertyValueAliases.txt");
+  const map = new Map<string, string>();
+  for (const line of content.split("\n")) {
+    const match = line.match(/^sc\s*;\s*([A-Za-z_]+)\s*;\s*([A-Za-z_]+)\s*(?:#|$)/);
+    if (match) map.set(match[2], match[1]);
+  }
+  return map;
+}
+
+/** intentional.txt is a pair list; the same source may appear on several rows. */
+function parseIntentionalFile(content: string): IntentionalDataset {
   let version = "unknown";
   let date = "unknown";
+  const pairs: IntentionalDataset["pairs"] = [];
 
-  for (const line of lines) {
-    // Parse version and date information
-    if (line.startsWith("# Version:")) {
-      version = line.split(":")[1].trim();
-    }
-    if (line.startsWith("# Date:")) {
-      date = line.split(":")[1].trim();
-    }
+  for (const line of content.split("\n")) {
+    if (line.startsWith("# Version:")) version = line.split(":")[1].trim();
+    if (line.startsWith("# Date:")) date = line.split(":").slice(1).join(":").trim();
+    if (line.startsWith("#") || line.trim() === "") continue;
 
-    // Skip comment lines and empty lines
-    if (line.startsWith("#") || line.trim() === "") {
-      continue;
-    }
+    const match = line.match(/^([0-9A-Fa-f]+)\s*;\s*([0-9A-Fa-f]+)\s*(?:;|#)/);
+    if (!match) continue;
+    pairs.push({
+      source: String.fromCodePoint(parseInt(match[1], 16)),
+      target: String.fromCodePoint(parseInt(match[2], 16)),
+    });
+  }
 
-    // Parse confusable character mapping lines
-    // Format: source ; target ; type # description
-    const match = line.match(/^([0-9A-Fa-f]+)\s*;\s*([0-9A-Fa-f\s]+)\s*;\s*(MA|MI|X)/);
+  return { version, date, pairs };
+}
+
+/** Extract one DerivedCoreProperties range table, e.g. Default_Ignorable_Code_Point. */
+function parseDerivedProperty(
+  content: string,
+  property: string,
+): { version: string; ranges: [number, number][] } {
+  let version = "unknown";
+  const ranges: [number, number][] = [];
+
+  for (const line of content.split("\n")) {
+    const fileVersion = line.match(/^#\s*\w+-(\d+\.\d+\.\d+)\.txt/);
+    if (fileVersion) version = fileVersion[1];
+    if (line.startsWith("#") || line.trim() === "") continue;
+
+    const match = line.match(
+      new RegExp(`^([0-9A-Fa-f]+)(?:\\.\\.([0-9A-Fa-f]+))?\\s*;\\s*${property}\\s*(?:#.*)?$`),
+    );
+    if (!match) continue;
+    ranges.push([parseInt(match[1], 16), parseInt(match[2] ?? match[1], 16)]);
+  }
+
+  ranges.sort((a, b) => a[0] - b[0]);
+  return { version, ranges };
+}
+
+function parseConfusablesFile(content: string): Dataset {
+  let version = "unknown";
+  let date = "unknown";
+  const confusables: Dataset["confusables"] = {};
+
+  for (const line of content.split("\n")) {
+    if (line.startsWith("# Version:")) version = line.split(":")[1].trim();
+    if (line.startsWith("# Date:")) date = line.split(":").slice(1).join(":").trim();
+    if (line.startsWith("#") || line.trim() === "") continue;
+
+    // Format: source ; target-sequence ; type # description.
+    // The target is one prototype string, not a list of alternatives.
+    const match =
+      line.match(/^([0-9A-Fa-f]+)\s*;\s*([0-9A-Fa-f\s]+?)\s*;\s*(MA|MI|X)/) ??
+      line.match(/^([0-9A-Fa-f]+)\s*;\s*([0-9A-Fa-f\s]+?)\s*#/);
     if (!match) continue;
 
     const [, sourceHex, targetHexStr, type] = match;
-
-    // Convert hexadecimal code points to strings
     const sourceChar = String.fromCodePoint(parseInt(sourceHex, 16));
+    const target = targetHexStr
+      .trim()
+      .split(/\s+/)
+      .map((hex) => String.fromCodePoint(parseInt(hex, 16)))
+      .join("");
 
-    // Parse target characters (can be multiple characters)
-    const targetHexes = targetHexStr.trim().split(/\s+/);
-    const targetChars = targetHexes.map((hex) => String.fromCodePoint(parseInt(hex, 16)));
-
-    // Get description information
-    const descriptionMatch = line.match(/#\s*(.+)$/);
-    const description = descriptionMatch ? descriptionMatch[1].trim() : undefined;
-
-    const record: ConfusableRecord = {
-      source: sourceChar,
-      target: targetChars,
-      type: type as ConfusableType,
-      description,
-    };
-
-    confusables[sourceChar] = record;
-
-    // Build reverse lookup index
-    for (const targetChar of targetChars) {
-      if (!reverseLookup[targetChar]) {
-        reverseLookup[targetChar] = [];
-      }
-      reverseLookup[targetChar].push(sourceChar);
-    }
+    confusables[sourceChar] = { target, type: (type ?? "MA") as "MA" | "MI" | "X" };
   }
 
-  return {
-    version,
-    date,
-    confusables,
-    reverseLookup,
-  };
+  return { version, date, confusables };
 }
 
-/**
- * Fetch confusables data from Unicode ICU repository
- */
-async function fetchConfusablesData(): Promise<string> {
-  console.log(`📥 Fetching confusables data from Unicode ICU...`);
+/** CLDR scriptMetadata.txt rows: `Latn; 2; 004C; IT; 1; RECOMMENDED; ...` — keep the ID_Usage column. */
+function parseScriptMetadata(content: string): {
+  version: string;
+  scripts: Record<string, string>;
+} {
+  const scripts: Record<string, string> = {};
+  let version = "unknown";
 
-  try {
-    const response = await fetch(CONFUSABLES_URL);
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
+  for (const line of content.split("\n")) {
+    const fileVersion = line.match(/^#\s*Unicode Version:\s*(.+)$/);
+    if (fileVersion) version = fileVersion[1].trim();
+    if (line.startsWith("#") || line.trim() === "") continue;
 
-    const content = await response.text();
-    console.log(`✅ Successfully fetched confusables.txt (${content.length} bytes)`);
-    return content;
-  } catch (error) {
-    console.error(`❌ Failed to fetch confusables.txt:`, String(error));
-    throw error;
+    const columns = line.split(";").map((part) => part.trim());
+    if (columns.length < 6 || !/^[A-Za-z_][A-Za-z_0-9]*$/.test(columns[0])) continue;
+    scripts[columns[0]] = columns[5].toUpperCase();
   }
+
+  return { version, scripts };
 }
 
-/**
- * Update confusables data
- */
-async function updateConfusablesData() {
-  console.log("🔄 Updating Unicode confusables data...");
-
-  try {
-    // Fetch the latest confusables data
-    const content = await fetchConfusablesData();
-
-    // Parse the content
-    console.log("🔍 Parsing confusables data...");
-    const data = parseConfusablesFile(content);
-
-    console.log(`📊 Parsing completed:`);
-    console.log(`   Version: ${data.version}`);
-    console.log(`   Date: ${data.date}`);
-    console.log(`   Total mappings: ${Object.keys(data.confusables).length}`);
-    console.log(`   Reverse lookup entries: ${Object.keys(data.reverseLookup).length}`);
-
-    // Save as JSON file
-    const filePath = join(DATA_DIR, "confusables.json");
-    const jsonOutput = JSON.stringify(data, null, 2);
-    writeFileSync(filePath, jsonOutput, "utf-8");
-
-    console.log(`💾 Successfully updated confusables.json`);
-
-    // Display some sample data for verification
-    const sampleKeys = Object.keys(data.confusables).slice(0, 5);
-    console.log("\n📝 Sample mappings:");
-    for (const key of sampleKeys) {
-      const record = data.confusables[key];
-      const keyHex = key.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0");
-      const targetHex = record.target.map((t) =>
-        t.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0"),
-      );
-      console.log(
-        `   U+${keyHex} (${key}) → [${record.target.map((t, i) => `U+${targetHex[i]} (${t})`).join(", ")}] (${record.type})`,
-      );
-    }
-  } catch (error) {
-    console.error("❌ Failed to update confusables data:", String(error));
-    throw error;
-  }
+async function fetchText(url: string, label: string): Promise<string> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`HTTP ${response.status} for ${label}`);
+  const content = await response.text();
+  console.log(`📥 Fetched ${label} (${content.length} bytes)`);
+  return content;
 }
 
-/**
- * Main execution function
- */
 async function main() {
-  try {
-    console.log("🚀 Starting Unicode confusables data update...\n");
+  for (const source of SOURCES) {
+    const content = await fetchText(source.url, source.label);
+    const filePath = join(DATA_DIR, source.file);
 
-    await updateConfusablesData();
-
-    console.log("\n🎯 Update completed successfully!");
-  } catch (error) {
-    console.error("\n❌ Update failed:", String(error));
-    process.exit(1);
+    if (source.kind === "confusables") {
+      const data = parseConfusablesFile(content);
+      writeFileSync(filePath, JSON.stringify(data), "utf-8");
+      const kb = (await import("node:fs")).statSync(filePath).size;
+      console.log(
+        `💾 ${source.file}: ${Object.keys(data.confusables).length} mappings, version ${data.version} (${(kb / 1024).toFixed(0)} KB)`,
+      );
+    } else if (source.kind === "intentional") {
+      const data = parseIntentionalFile(content);
+      writeFileSync(filePath, JSON.stringify(data), "utf-8");
+      console.log(`💾 ${source.file}: ${data.pairs.length} pairs, version ${data.version}`);
+    } else if (source.kind === "derived-properties") {
+      // One DerivedCoreProperties.txt download feeds three range tables.
+      const properties = [
+        { file: "default-ignorable.json", property: "Default_Ignorable_Code_Point" },
+        { file: "xid-start.json", property: "XID_Start" },
+        { file: "xid-continue.json", property: "XID_Continue" },
+      ] as const;
+      for (const { file, property } of properties) {
+        const data = parseDerivedProperty(content, property);
+        writeFileSync(join(DATA_DIR, file), JSON.stringify(data), "utf-8");
+        console.log(`Saved ${file}: ${data.ranges.length} ranges, version ${data.version}`);
+      }
+    } else if (source.kind === "script-metadata") {
+      const data = parseScriptMetadata(content);
+      writeFileSync(filePath, JSON.stringify(data), "utf-8");
+      const kb = (await import("node:fs")).statSync(filePath).size;
+      console.log(
+        `💾 ${source.file}: ${Object.keys(data.scripts).length} scripts, version ${data.version} (${(kb / 1024).toFixed(0)} KB)`,
+      );
+    } else {
+      const data = parseRangesFile(content);
+      if (source.file === "scripts.json") {
+        const nameMap = await fetchScriptNameMap();
+        data.ranges = data.ranges.map(([start, end, value]) => [
+          start,
+          end,
+          nameMap.get(value) ?? value,
+        ]);
+      }
+      writeFileSync(filePath, JSON.stringify(data), "utf-8");
+      const kb = (await import("node:fs")).statSync(filePath).size;
+      console.log(
+        `💾 ${source.file}: ${data.ranges.length} ranges, version ${data.version} (${(kb / 1024).toFixed(0)} KB)`,
+      );
+    }
   }
 }
 
-// Execute the script if running directly
-if (import.meta.main) {
-  await main();
-}
+await main();

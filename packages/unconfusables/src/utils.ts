@@ -1,79 +1,138 @@
 /**
  * Unicode Confusables Utility Functions
+ *
+ * All string iteration is code-point based (astral-plane safe), and
+ * normalization follows the UTS #39 skeleton algorithm: NFD, apply the
+ * confusable mapping, then NFD again.
  */
 
-import { confusables } from "./data";
-import type { ConfusableRecord, ConfusableType, RandomConfusableOptions } from "./types";
+import {
+  confusables,
+  defaultIgnorable,
+  getReverseLookup,
+  intentional,
+  identifierStatus,
+  identifierType,
+} from "./data";
+import type {
+  ConfusableDetection,
+  ConfusableMetadata,
+  ConfusableRecord,
+  ConfusableType,
+  ConfusablesOptions,
+  IdentifierStatus,
+  IntentionalDetection,
+} from "./types";
 
-// Get confusable mapping for a character
+function hasRange(ranges: [number, number][], cp: number): boolean {
+  let lo = 0;
+  let hi = ranges.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const [start, end] = ranges[mid];
+    if (cp < start) hi = mid - 1;
+    else if (cp > end) lo = mid + 1;
+    else return true;
+  }
+  return false;
+}
+
+function isDefaultIgnorable(char: string): boolean {
+  const cp = char.codePointAt(0);
+  return cp !== undefined && hasRange(defaultIgnorable.ranges, cp);
+}
+
+function* iterateCodePoints(text: string): Generator<string> {
+  for (const char of text.normalize("NFD")) {
+    yield char;
+  }
+}
+
+function matchesType(record: ConfusableRecord, type: ConfusableType | "all" | undefined): boolean {
+  if (!type || type === "all") return true;
+  return record.type === type;
+}
+
+/** Resolve the confusable prototype mapping for a character. */
 export function getConfusables(char: string): ConfusableRecord | null {
-  if (char.length === 0) return null;
-
-  return confusables.confusables[char[0]] || null;
+  const first = Array.from(char)[0];
+  if (!first) return null;
+  return confusables.confusables[first] ?? null;
 }
 
-// Get all characters that can be confusable with the given character
-export function getConfusableSources(char: string): string[] {
-  if (char.length === 0) return [];
-
-  return confusables.reverseLookup[char[0]] || [];
+/** Get all source characters whose prototype equals the given prototype string. */
+export function getConfusableSources(prototype: string): string[] {
+  return [...(getReverseLookup(confusables).get(prototype) ?? [])];
 }
 
-// Normalize string by replacing confusable characters with their targets
-export function normalizeString(text: string, type: ConfusableType = "MA"): string {
-  return text
-    .split("")
-    .map((char) => {
-      const confusable = confusables.confusables[char];
-      if (confusable && confusable.type === type) {
-        return confusable.target[0];
-      }
-      return char;
-    })
-    .join("");
-}
-
-// Normalize string using all confusable types
-export function normalizeStringAll(text: string): string {
-  return text
-    .split("")
-    .map((char) => {
-      const confusable = confusables.confusables[char];
-      if (confusable) {
-        return confusable.target[0];
-      }
-      return char;
-    })
-    .join("");
-}
-
-// Check if two strings are confusable with each other
-export function areConfusable(str1: string, str2: string, type: ConfusableType = "MA"): boolean {
-  const normalized1 = normalizeString(str1, type);
-  const normalized2 = normalizeString(str2, type);
-  return normalized1 === normalized2;
-}
-
-// Get all possible confusable variations of a string
-export function getConfusableVariations(text: string, type: ConfusableType = "MA"): string[] {
-  const variations = new Set<string>();
-  variations.add(text);
-
-  const chars = text.split("");
-  const positions: number[][] = [];
-
-  for (let i = 0; i < chars.length; i++) {
-    const confusable = confusables.confusables[chars[i]];
-    if (confusable && confusable.type === type && confusable.target.length > 0) {
-      positions.push([i, confusable.target.length]);
+/**
+ * UTS #39 skeleton algorithm: NFD, map through the confusable table, NFD again.
+ */
+export function skeleton(text: string, options: ConfusablesOptions = {}): string {
+  let out = "";
+  for (const char of iterateCodePoints(text)) {
+    const record = confusables.confusables[char];
+    if (record && matchesType(record, options.type)) {
+      out += record.target;
+    } else if (!isDefaultIgnorable(char)) {
+      out += char;
     }
   }
+  return out.normalize("NFD");
+}
 
-  for (const [pos] of positions) {
-    const confusable = confusables.confusables[chars[pos]];
-    for (const target of confusable!.target) {
+export function normalizeString(text: string, type: ConfusableType | "all" = "MA"): string {
+  return skeleton(text, { type });
+}
+
+/**
+ * Normalize using all confusable types.
+ */
+export function normalizeStringAll(text: string): string {
+  return skeleton(text, { type: "all" });
+}
+
+/** Check whether two strings become identical after skeleton normalization. */
+export function areConfusable(
+  str1: string,
+  str2: string,
+  type: ConfusableType | "all" = "MA",
+): boolean {
+  return skeleton(str1, { type }) === skeleton(str2, { type });
+}
+
+/**
+ * Detect confusable characters in a string. `index` is the code point index
+ * within the NFD-normalized input, matching skeleton normalization.
+ */
+export function detectConfusables(
+  text: string,
+  options: ConfusablesOptions = {},
+): ConfusableDetection[] {
+  const detections: ConfusableDetection[] = [];
+  let index = 0;
+  for (const char of text.normalize("NFD")) {
+    const record = confusables.confusables[char];
+    if (record && matchesType(record, options.type)) {
+      detections.push({ index, char, target: record.target, type: record.type });
+    }
+    index++;
+  }
+  return detections;
+}
+
+/** Get every single-character confusable variation of a string. */
+export function getConfusableVariations(text: string, options: ConfusablesOptions = {}): string[] {
+  const variations = new Set<string>([text]);
+  const chars = Array.from(text);
+
+  for (let i = 0; i < chars.length; i++) {
+    const record = confusables.confusables[chars[i]];
+    if (!record || !matchesType(record, options.type)) continue;
+    for (const source of getConfusableSources(record.target)) {
+      if (source === chars[i]) continue;
       const variation = chars.slice();
-      variation[pos] = target;
+      variation[i] = source;
       variations.add(variation.join(""));
     }
   }
@@ -81,57 +140,90 @@ export function getConfusableVariations(text: string, type: ConfusableType = "MA
   return Array.from(variations);
 }
 
-// Replace character with random confusable
-export function getRandomConfusable(char: string, options: RandomConfusableOptions = {}): string {
-  if (char.length === 0) return char;
-
-  const confusable = confusables.confusables[char];
-  if (!confusable || confusable.target.length === 0) return char;
-
-  // Filter by type if specified
-  if (options.type && confusable.type !== options.type) return char;
-
-  // Filter out excluded characters
-  let targets = confusable.target;
-  if (options.exclude) {
-    targets = targets.filter((target) => !options.exclude!.has(target));
-    if (targets.length === 0) return char;
-  }
-
-  const randomIndex = Math.floor(Math.random() * targets.length);
-  return targets[randomIndex];
+/** Get the prototype replacement sequence for a character. */
+export function getConfusablePrototype(char: string): string {
+  const first = Array.from(char)[0];
+  if (!first) return char;
+  return confusables.confusables[first]?.target ?? char;
 }
 
-// Randomly replace characters in string
-export function randomizeConfusables(
-  text: string,
-  options: RandomConfusableOptions & { probability?: number } = {},
-): string {
+/** Randomly replace characters in a string with their prototype sequences. */
+export function randomizeConfusables(text: string, options: { probability?: number } = {}): string {
   const probability = options.probability ?? 0.5;
-
-  return text
-    .split("")
-    .map((char) => {
-      if (Math.random() < probability) {
-        return getRandomConfusable(char, options);
-      }
-      return char;
-    })
+  return Array.from(text)
+    .map((char) => (Math.random() < probability ? getConfusablePrototype(char) : char))
     .join("");
 }
 
-// Get metadata about the confusables dataset
-export function getMetadata() {
-  const typeStats = { MA: 0, MI: 0, X: 0 };
-  for (const record of Object.values(confusables.confusables)) {
-    typeStats[record.type]++;
+/** Binary search an Identifier range table for the code point of a single character. */
+function findIdentifierRange(
+  ranges: [number, number, string][],
+  char: string,
+): [number, number, string] | null {
+  const cp = char.codePointAt(0);
+  if (cp === undefined) return null;
+  let lo = 0;
+  let hi = ranges.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const [start, end] = ranges[mid];
+    if (cp < start) hi = mid - 1;
+    else if (cp > end) lo = mid + 1;
+    else return ranges[mid];
   }
+  return null;
+}
 
+/**
+ * UTS #39 Identifier_Status for a character. Characters not listed in the
+ * dataset default to "Restricted", so this always returns a status.
+ */
+export function getIdentifierStatus(char: string): IdentifierStatus {
+  return findIdentifierRange(identifierStatus.ranges, char) ? "Allowed" : "Restricted";
+}
+
+/**
+ * UTS #39 Identifier_Type values for a character. Characters not listed in
+ * the dataset default to ["Not_Character"].
+ */
+export function getIdentifierTypes(char: string): string[] {
+  const hit = findIdentifierRange(identifierType.ranges, char);
+  if (!hit) return ["Not_Character"];
+  return hit[2].split(" ");
+}
+
+/** Intentional confusable targets for a character (may be several). */
+export function getIntentionalTargets(char: string): string[] {
+  return intentional.pairs.filter((pair) => pair.source === char).map((pair) => pair.target);
+}
+
+/** Detect intentional confusables with positions in the input string. */
+export function detectIntentional(text: string): IntentionalDetection[] {
+  const detections: IntentionalDetection[] = [];
+  let index = 0;
+  for (const char of text) {
+    const targets = getIntentionalTargets(char);
+    if (targets.length > 0) detections.push({ index, char, targets });
+    index++;
+  }
+  return detections;
+}
+
+/** True when the two characters form an intentional confusable pair. */
+export function areIntentionalPair(a: string, b: string): boolean {
+  return getIntentionalTargets(a).includes(b);
+}
+
+/** Metadata about the confusables dataset. */
+export function getMetadata(): ConfusableMetadata {
+  const typeDistribution = { MA: 0, MI: 0, X: 0 };
+  for (const record of Object.values(confusables.confusables)) {
+    typeDistribution[record.type]++;
+  }
   return {
     version: confusables.version,
     date: confusables.date,
     totalMappings: Object.keys(confusables.confusables).length,
-    reverseLookupEntries: Object.keys(confusables.reverseLookup).length,
-    typeDistribution: typeStats,
+    typeDistribution,
   };
 }
