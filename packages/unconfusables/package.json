@@ -1,6 +1,6 @@
 {
   "name": "unconfusables",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Unicode confusable characters detection and string normalization library based on UTS #39",
   "keywords": [
     "attack",
@@ -36,22 +36,29 @@
     "dist"
   ],
   "type": "module",
+  "sideEffects": false,
   "main": "dist/index.mjs",
   "types": "dist/index.d.mts",
   "exports": {
     ".": {
       "types": "./dist/index.d.mts",
-      "import": "./dist/index.mjs"
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
     },
     "./script": {
       "types": "./dist/script.d.mts",
-      "import": "./dist/script.mjs"
+      "import": "./dist/script.mjs",
+      "default": "./dist/script.mjs"
     }
   },
   "scripts": {
     "dev": "basis build --stub",
     "build": "vp pack",
     "prepack": "pnpm build",
-    "release": "basis publish"
+    "release": "basis publish",
+    "update:data": "node scripts/update.ts"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

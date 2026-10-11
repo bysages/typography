@@ -153,11 +153,11 @@ getRestrictionLevel("abc\u304A\u308A\u304C\u307F"); // "highly-restrictive"
 | `intentional`                       | `IntentionalDataset` | Curated pair list (`{ source, target }[]`)                 |
 | `identifierStatus`                  | `RangesDataset`      | Identifier_Status ranges                                   |
 | `identifierType`                    | `RangesDataset`      | Identifier_Type ranges                                     |
-| `defaultIgnorable`                  | `RangesDataset`      | `Default_Ignorable_Code_Point` ranges used by the skeleton |
+| `defaultIgnorable`                  | `FlagRangesDataset`  | `Default_Ignorable_Code_Point` ranges used by the skeleton |
 | `getReverseLookup(dataset)`         | —                    | Prototype → sources map, cached per dataset                |
 | `getMetadata(): ConfusableMetadata` | —                    | Version, date, mapping count, MA/MI/X distribution         |
 
-The `unconfusables/script` subpath adds `scripts`, `scriptExtensions`, `scriptMetadata`, `identifierStatus`, `xidStart`, `xidContinue`, `defaultIgnorable`, `getScript`, `getScriptExtensions`, `getAugmentedScriptSet`, `resolveScriptSet`, `isMixedScript`, `isIdentifierWellFormed`, `getRestrictionLevel`, and `getRestrictionLevelValue`.
+The `unconfusables/script` subpath adds `scripts`, `scriptExtensions`, `scriptMetadata`, `identifierStatus`, `xidStart`, `xidContinue`, `defaultIgnorable`, `getScript`, `getScriptExtensions`, `getAugmentedScriptSet`, `resolveScriptSet`, `isMixedScript`, `isIdentifierWellFormed`, `getRestrictionLevel`, `getRestrictionLevelValue`, plus the `RestrictionLevel` type and `RESTRICTION_LEVELS` ordering array.
 
 ## Notes
 

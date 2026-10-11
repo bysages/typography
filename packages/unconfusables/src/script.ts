@@ -63,16 +63,25 @@ function hasRange(ranges: [number, number][], cp: number): boolean {
   return false;
 }
 
+/** Reject multi-code-point strings in single-character APIs. */
+function singleCodePoint(char: string): string {
+  const points = Array.from(char);
+  if (points.length !== 1) {
+    throw new RangeError(`Expected a single code point, received ${points.length}`);
+  }
+  return points[0];
+}
+
 /** Script property for a character, as a 4-letter code. */
 export function getScript(char: string): string {
-  const cp = char.codePointAt(0);
+  const cp = singleCodePoint(char).codePointAt(0);
   if (cp === undefined) return "Zzzz";
   return findRangeValue(scripts.ranges, cp) ?? "Zzzz";
 }
 
 /** Raw Script_Extensions values for a character, or [getScript(char)] when unlisted. */
 export function getScriptExtensions(char: string): string[] {
-  const cp = char.codePointAt(0);
+  const cp = singleCodePoint(char).codePointAt(0);
   if (cp === undefined) return ["Zzzz"];
   const value = findRangeValue(scriptExtensions.ranges, cp);
   return value ? value.split(" ") : [getScript(char)];

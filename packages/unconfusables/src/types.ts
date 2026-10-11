@@ -34,19 +34,20 @@ export interface ConfusableMetadata {
 }
 
 export interface IntentionalDetection {
-  /** Code point index in the NFD-normalized input */
+  /** Code point index in the original string */
   index: number;
   char: string;
   targets: string[];
 }
 
 export interface ConfusablesOptions {
-  /** Confusable type filter. Defaults to "MA" for normalization-style APIs. */
+  /** Confusable type filter. Passing nothing keeps every mapping;
+   * normalizeString()/areConfusable() default to "MA" on top of this. */
   type?: ConfusableType | "all";
 }
 
 export interface ConfusableDetection {
-  /** Code point index in the original string */
+  /** Code point index within the NFD-normalized input, matching skeleton() */
   index: number;
   /** The original character */
   char: string;
@@ -66,6 +67,21 @@ export interface RangesDataset {
   version: string;
   ranges: [number, number, string][];
 }
+
+/** Identifier_Type values from IdentifierType.txt plus the unlisted default. */
+export type IdentifierType =
+  | "Default_Ignorable"
+  | "Deprecated"
+  | "Exclusion"
+  | "Inclusion"
+  | "Limited_Use"
+  | "Not_Character"
+  | "Not_NFKC"
+  | "Not_XID"
+  | "Obsolete"
+  | "Recommended"
+  | "Technical"
+  | "Uncommon_Use";
 
 /** A UCD derived-property dataset whose property is the table itself, so
  * each range is just [start, end] with no repeated value column. */
