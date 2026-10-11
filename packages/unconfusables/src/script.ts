@@ -14,7 +14,12 @@ import scriptMetadataData from "./data/script-metadata.json";
 import scriptsData from "./data/scripts.json";
 import xidContinueData from "./data/xid-continue.json";
 import xidStartData from "./data/xid-start.json";
-import type { FlagRangesDataset, RangesDataset } from "./types";
+import type {
+  FlagRangesDataset,
+  RangesDataset,
+  ScriptIdUsage,
+  ScriptMetadataDataset,
+} from "./types";
 
 /** UCD Script ranges (4-letter codes). Characters not listed default to "Zzzz" (Unknown). */
 export const scripts: RangesDataset = scriptsData as RangesDataset;
@@ -35,7 +40,9 @@ export const xidContinue: FlagRangesDataset = xidContinueData as FlagRangesDatas
 export const defaultIgnorable: FlagRangesDataset = defaultIgnorableData as FlagRangesDataset;
 
 /** CLDR script metadata: 4-letter code -> ID_Usage (RECOMMENDED, LIMITED_USE, EXCLUDED, ...). */
-export const scriptMetadata: Record<string, string> = scriptMetadataData.scripts;
+export const scriptMetadata: Record<string, ScriptIdUsage> = (
+  scriptMetadataData as ScriptMetadataDataset
+).scripts;
 
 function findRangeValue(ranges: [number, number, string][], cp: number): string | null {
   let lo = 0;
@@ -165,14 +172,14 @@ export type RestrictionLevel =
   | "minimally-restrictive"
   | "unrestricted";
 
-export const RESTRICTION_LEVELS: RestrictionLevel[] = [
+export const RESTRICTION_LEVELS = [
   "ascii-only",
   "single-script",
   "highly-restrictive",
   "moderately-restrictive",
   "minimally-restrictive",
   "unrestricted",
-];
+] as const;
 
 function intersectWith(acc: Set<string>, augmented: Set<string>): Set<string> {
   return new Set([...acc].filter((script) => augmented.has(script)));

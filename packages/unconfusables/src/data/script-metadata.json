@@ -1,5 +1,5 @@
 {
-  "version": "48.2",
+  "version": "18.0.0",
   "scripts": {
     "Zyyy": "RECOMMENDED",
     "Latn": "RECOMMENDED",
@@ -84,6 +84,7 @@
     "Hung": "EXCLUSION",
     "Ital": "EXCLUSION",
     "Java": "LIMITED_USE",
+    "Jurc": "EXCLUSION",
     "Kali": "LIMITED_USE",
     "Kawi": "EXCLUSION",
     "Khar": "EXCLUSION",
@@ -129,6 +130,7 @@
     "Ougr": "EXCLUSION",
     "Palm": "EXCLUSION",
     "Pauc": "EXCLUSION",
+    "Pcun": "EXCLUSION",
     "Perm": "EXCLUSION",
     "Phag": "EXCLUSION",
     "Phli": "EXCLUSION",
@@ -142,6 +144,7 @@
     "Samr": "EXCLUSION",
     "Sarb": "EXCLUSION",
     "Saur": "LIMITED_USE",
+    "Seal": "EXCLUSION",
     "Sgnw": "EXCLUSION",
     "Shaw": "EXCLUSION",
     "Shrd": "EXCLUSION",

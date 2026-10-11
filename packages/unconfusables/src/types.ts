@@ -89,3 +89,12 @@ export interface FlagRangesDataset {
   version: string;
   ranges: [number, number][];
 }
+
+/** CLDR ID_Usage values consumed by restriction-level analysis. */
+export type ScriptIdUsage = "RECOMMENDED" | "LIMITED_USE" | "EXCLUDED" | "UNKNOWN";
+
+/** CLDR scriptMetadata.txt dataset: 4-letter script code -> ID_Usage. */
+export interface ScriptMetadataDataset {
+  version: string;
+  scripts: Record<string, ScriptIdUsage>;
+}

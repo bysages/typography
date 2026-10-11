@@ -33,7 +33,7 @@ export const defaultIgnorable: FlagRangesDataset = defaultIgnorableData as FlagR
 const reverseCache = new WeakMap<ConfusablesDataset, Map<string, string[]>>();
 
 /** Lazily built reverse lookup: prototype sequence -> sources that map to it. */
-export function getReverseLookup(dataset: ConfusablesDataset): Map<string, string[]> {
+export function getReverseLookup(dataset: ConfusablesDataset): ReadonlyMap<string, string[]> {
   let lookup = reverseCache.get(dataset);
   if (!lookup) {
     lookup = new Map();
@@ -44,5 +44,5 @@ export function getReverseLookup(dataset: ConfusablesDataset): Map<string, strin
     }
     reverseCache.set(dataset, lookup);
   }
-  return lookup;
+  return new Map(lookup);
 }

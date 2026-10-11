@@ -1,20 +1,17 @@
 {
   "name": "unconfusables",
-  "version": "0.1.0",
-  "description": "Unicode confusable characters detection and string normalization library based on UTS #39",
+  "version": "0.1.1",
+  "description": "Unicode confusable detection, spoof checking, identifier profiling, and script analysis based on UTS #39 and UAX #31",
   "keywords": [
-    "attack",
     "confusables",
-    "detection",
     "homograph",
-    "normalization",
+    "identifier",
     "phishing",
-    "prevention",
-    "safety",
+    "script-analysis",
     "security",
-    "string",
+    "spoofing",
     "typescript",
-    "typography",
+    "uax31",
     "unicode",
     "uts39"
   ],
@@ -30,7 +27,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bysages/typography.git"
+    "url": "git+https://github.com/bysages/typography.git",
+    "directory": "packages/unconfusables"
   },
   "files": [
     "dist"
@@ -49,14 +47,15 @@
       "types": "./dist/script.d.mts",
       "import": "./dist/script.mjs",
       "default": "./dist/script.mjs"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "scripts": {
     "dev": "basis build --stub",
     "build": "vp pack",
     "prepack": "pnpm build",
     "release": "basis publish",
-    "update:data": "node scripts/update.ts"
+    "update:data": "node scripts/update.mjs"
   },
   "engines": {
     "node": ">=20"

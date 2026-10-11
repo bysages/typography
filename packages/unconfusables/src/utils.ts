@@ -74,9 +74,10 @@ export function singleCodePoint(char: string): string {
 }
 
 /**
- * UTS #39 skeleton algorithm: NFD, strip default-ignorable code points, map
- * through the confusable table, NFD again. Stripping runs before the mapping
- * so ignorable characters are never remapped by confusable entries.
+ * UTS #39 internal skeleton: NFD, strip default-ignorable code points, map
+ * through the confusable table, NFD again. This is direction-insensitive;
+ * callers needing directional spoof checks must apply explicit bidi analysis.
+ * Stripping runs before mapping so ignorable characters are never remapped.
  */
 export function skeleton(text: string, options: ConfusablesOptions = {}): string {
   let out = "";
@@ -119,6 +120,7 @@ export function detectConfusables(
   const detections: ConfusableDetection[] = [];
   let index = 0;
   for (const char of text.normalize("NFD")) {
+    if (isDefaultIgnorable(char)) continue;
     const record = confusables.confusables[char];
     if (record && matchesType(record, options.type)) {
       detections.push({ index, char, target: record.target, type: record.type });
@@ -130,8 +132,9 @@ export function detectConfusables(
 
 /** Get every single-character confusable variation of a string. */
 export function getConfusableVariations(text: string, options: ConfusablesOptions = {}): string[] {
-  const variations = new Set<string>([text]);
-  const chars = Array.from(text);
+  const normalized = text.normalize("NFD");
+  const variations = new Set<string>([normalized]);
+  const chars = Array.from(normalized);
 
   for (let i = 0; i < chars.length; i++) {
     const record = confusables.confusables[chars[i]];

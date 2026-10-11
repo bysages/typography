@@ -3,6 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   areConfusable,
   areIntentionalPair,
+  detectConfusables,
   detectIntentional,
   getConfusablePrototype,
   getConfusableSources,
@@ -100,6 +101,10 @@ describe("getRestrictionLevel profile check", () => {
 });
 
 describe("default-ignorable handling", () => {
+  it("does not report mappings for ignorable code points", () => {
+    expect(detectConfusables("\u3164")).toEqual([]);
+  });
+
   it("strips skeleton-relevant ignorable code points before confusable mapping", () => {
     // U+3164 HANGUL FILLER is both a confusable source and default-ignorable;
     // UTS #39 requires stripping before mapping, so it must vanish entirely.
