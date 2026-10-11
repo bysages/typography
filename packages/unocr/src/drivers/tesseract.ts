@@ -1,7 +1,8 @@
+import { fromHtml } from "hast-util-from-html";
 import Tesseract, { createScheduler } from "tesseract.js";
 import type { Worker } from "tesseract.js";
 import { toUint8Array } from "undio";
-import { fromHtml } from "hast-util-from-html";
+
 import type {
   Driver,
   DriverOptions,
@@ -80,12 +81,7 @@ export default function tesseractDriver<TOutputType extends OutputType>(
           inputs.map(async (input) => {
             const imageLike = await toUint8Array(input);
 
-            const result = await scheduler.addJob(
-              "recognize",
-              imageLike,
-              {},
-              { hocr: true },
-            );
+            const result = await scheduler.addJob("recognize", imageLike, {}, { hocr: true });
             const hocr = result.data.hocr || "";
 
             // Return based on outputType

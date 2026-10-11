@@ -21,10 +21,7 @@ export function createOCRManager<TOutputType extends OutputType>(
 
     recognizes:
       driver.recognizes ||
-      (async (
-        inputs: OCRInput[],
-        _recognizesOptions: RecognizesOptions = {},
-      ) => {
+      (async (inputs: OCRInput[], _recognizesOptions: RecognizesOptions = {}) => {
         // Fallback: process inputs sequentially using recognize
         const results: OCRResult<TOutputType>[] = [];
         for (const input of inputs) {

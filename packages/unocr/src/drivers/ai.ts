@@ -1,6 +1,7 @@
 import { generateText } from "ai";
-import { toBase64 } from "undio";
 import { fromHtml } from "hast-util-from-html";
+import { toBase64 } from "undio";
+
 import type {
   Driver,
   DriverOptions,
@@ -11,22 +12,21 @@ import type {
   Root,
 } from "..";
 
-export type AIDriverOptions<T extends OutputType = OutputType> =
-  DriverOptions<T> & {
-    model: any;
-    system?: string;
-    temperature?: number;
-    maxRetries?: number;
-    maxOutputTokens?: number;
-    topP?: number;
-    topK?: number;
-    presencePenalty?: number;
-    frequencyPenalty?: number;
-    stopSequences?: string[];
-    seed?: number;
-    abortSignal?: AbortSignal;
-    headers?: Record<string, string | undefined>;
-  };
+export type AIDriverOptions<T extends OutputType = OutputType> = DriverOptions<T> & {
+  model: any;
+  system?: string;
+  temperature?: number;
+  maxRetries?: number;
+  maxOutputTokens?: number;
+  topP?: number;
+  topK?: number;
+  presencePenalty?: number;
+  frequencyPenalty?: number;
+  stopSequences?: string[];
+  seed?: number;
+  abortSignal?: AbortSignal;
+  headers?: Record<string, string | undefined>;
+};
 
 export default function aiDriver<TOutputType extends OutputType>(
   options: AIDriverOptions<TOutputType>,
@@ -49,9 +49,7 @@ export default function aiDriver<TOutputType extends OutputType>(
     ...restOptions
   } = options;
 
-  const recognize = async (
-    input: OCRInput,
-  ): Promise<OCRResult<TOutputType>> => {
+  const recognize = async (input: OCRInput): Promise<OCRResult<TOutputType>> => {
     const imageData = await toBase64(input);
 
     const { text } = await generateText({
@@ -108,17 +106,13 @@ export default function aiDriver<TOutputType extends OutputType>(
       const results = await Promise.allSettled(
         inputs.map((input, index) => {
           // Process batch for controlled parallelism
-          const batchIndex = Math.floor(
-            index / Math.ceil(inputs.length / parallel),
-          );
+          const batchIndex = Math.floor(index / Math.ceil(inputs.length / parallel));
 
           // Add small delay to spread out requests
           const delay = batchIndex * 100; // 100ms delay between batches
 
           return delay > 0
-            ? new Promise((resolve) => setTimeout(resolve, delay)).then(() =>
-                recognize(input),
-              )
+            ? new Promise((resolve) => setTimeout(resolve, delay)).then(() => recognize(input))
             : recognize(input);
         }),
       );

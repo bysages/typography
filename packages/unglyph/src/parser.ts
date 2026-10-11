@@ -1,5 +1,6 @@
 import * as fontkit from "fontkit";
 import { toUint8Array } from "undio";
+
 import type { FontInput, FontData } from "./types";
 import { convertFromFontkitGlyph } from "./utils";
 
@@ -41,12 +42,7 @@ export function parseFont(input: FontInput): FontData {
 
     if (fontkitGlyph) {
       // Convert fontkit glyph to our unified format
-      const glyph = convertFromFontkitGlyph(
-        fontkitGlyph,
-        fontkitGlyph.id,
-        font.ascent,
-        codePoint,
-      );
+      const glyph = convertFromFontkitGlyph(fontkitGlyph, fontkitGlyph.id, font.ascent, codePoint);
       fontData.glyphs.push(glyph);
     }
   }

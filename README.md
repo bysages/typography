@@ -36,10 +36,10 @@ console.log(getConfusables("0")); // { source: "0", target: ["O"], type: "MA" }
 console.log(normalizeString("paypa1")); // "paypal"
 console.log(areConfusable("0l", "Ol")); // true
 
+import { toString } from "hast-util-to-string";
 // OCR with unocr
 import { createOCRManager } from "unocr";
 import tesseractDriver from "unocr/drivers/tesseract";
-import { toString } from "hast-util-to-string";
 
 const ocr = createOCRManager({
   driver: tesseractDriver({ langs: "eng" }),
@@ -50,13 +50,7 @@ const text = toString(result);
 console.log(text); // Extracted text
 
 // Font manipulation with unglyph
-import {
-  parseFont,
-  createFont,
-  generateFont,
-  createGlyphManager,
-  renderGlyph,
-} from "unglyph";
+import { parseFont, createFont, generateFont, createGlyphManager, renderGlyph } from "unglyph";
 
 // Parse existing font
 const font = parseFont(fontBuffer);

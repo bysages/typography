@@ -3,9 +3,7 @@ import type { GlyphData, GlyphOperation } from "./types";
 /**
  * Create a new GlyphManager instance
  */
-export function createGlyphManager(
-  initialGlyphs: GlyphData[] = [],
-): GlyphManager {
+export function createGlyphManager(initialGlyphs: GlyphData[] = []): GlyphManager {
   return new GlyphManager(initialGlyphs);
 }
 
@@ -105,8 +103,7 @@ export class GlyphManager {
    * Find glyph by unicode (checks unicode property or codePoints)
    */
   findByUnicode(unicode: string | number): GlyphData | undefined {
-    const codePoint =
-      typeof unicode === "string" ? unicode.charCodeAt(0) : unicode;
+    const codePoint = typeof unicode === "string" ? unicode.charCodeAt(0) : unicode;
 
     for (const glyph of this.glyphs.values()) {
       // Check unicode property

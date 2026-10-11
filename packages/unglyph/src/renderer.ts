@@ -9,9 +9,7 @@ import type {
 /**
  * Type guard to check if options are for Canvas rendering
  */
-function isCanvasOptions(
-  options: RenderOptions,
-): options is CanvasRenderOptions {
+function isCanvasOptions(options: RenderOptions): options is CanvasRenderOptions {
   return "ctx" in options;
 }
 
@@ -73,12 +71,7 @@ function calculateBounds(glyph: GlyphData) {
 /**
  * Convert path commands to SVG path string
  */
-function pathToSVG(
-  glyph: GlyphData,
-  bounds: any,
-  scale: number,
-  padding: number,
-): string {
+function pathToSVG(glyph: GlyphData, bounds: any, scale: number, padding: number): string {
   return glyph.path.commands
     .map((cmd) => {
       switch (cmd.type) {
@@ -154,10 +147,7 @@ function renderPathToCanvas(
 /**
  * Render glyph to SVG string
  */
-export function renderGlyphToSVG(
-  glyph: GlyphData,
-  options: SVGRenderOptions,
-): string {
+export function renderGlyphToSVG(glyph: GlyphData, options: SVGRenderOptions): string {
   const scale = options.size / 1000; // Assuming 1000 units per em
   const padding = options.padding || 0;
   const color = options.color || "black";
@@ -186,10 +176,7 @@ export function renderGlyphToSVG(
 /**
  * Render glyph to Canvas context
  */
-export function renderGlyphToCanvas(
-  glyph: GlyphData,
-  options: CanvasRenderOptions,
-): void {
+export function renderGlyphToCanvas(glyph: GlyphData, options: CanvasRenderOptions): void {
   const scale = options.size / 1000;
 
   // Save context state
@@ -220,14 +207,7 @@ export function renderGlyphToCanvas(
         options.ctx.quadraticCurveTo(cmd.cx, cmd.cy, cmd.x, cmd.y);
         break;
       case "cubic":
-        options.ctx.bezierCurveTo(
-          cmd.cx1,
-          cmd.cy1,
-          cmd.cx2,
-          cmd.cy2,
-          cmd.x,
-          cmd.y,
-        );
+        options.ctx.bezierCurveTo(cmd.cx1, cmd.cy1, cmd.cx2, cmd.cy2, cmd.x, cmd.y);
         break;
       case "close":
         options.ctx.closePath();
@@ -293,18 +273,9 @@ export async function renderGlyphToImage(
 /**
  * Unified render function with type-safe overloads
  */
-export function renderGlyph(
-  glyph: GlyphData,
-  options: SVGRenderOptions,
-): string;
-export function renderGlyph(
-  glyph: GlyphData,
-  options: CanvasRenderOptions,
-): void;
-export function renderGlyph(
-  glyph: GlyphData,
-  options: ImageRenderOptions,
-): Promise<Buffer>;
+export function renderGlyph(glyph: GlyphData, options: SVGRenderOptions): string;
+export function renderGlyph(glyph: GlyphData, options: CanvasRenderOptions): void;
+export function renderGlyph(glyph: GlyphData, options: ImageRenderOptions): Promise<Buffer>;
 export function renderGlyph(
   glyph: GlyphData,
   options: RenderOptions,
