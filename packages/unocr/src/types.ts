@@ -48,7 +48,7 @@ export interface RecognizesOptions {
 
 export interface DriverOptions<T extends OutputType = OutputType> {
   outputType?: T;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface Driver<

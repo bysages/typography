@@ -14,18 +14,21 @@ export type NativeDriverOptions<T extends OutputType = OutputType> = DriverOptio
 };
 
 let nativeModule: NativeOcr | null | undefined;
+let nativeLoadFailure: unknown;
 
 async function loadNative(): Promise<NativeOcr> {
   if (nativeModule === undefined) {
     try {
       nativeModule = (await import("@napi-rs/system-ocr")) as NativeOcr;
-    } catch {
+    } catch (reason) {
       nativeModule = null;
+      nativeLoadFailure = reason;
     }
   }
   if (!nativeModule) {
     throw new Error(
       "System OCR is unavailable: install the optional peer dependency @napi-rs/system-ocr on macOS or Windows.",
+      { cause: nativeLoadFailure },
     );
   }
   return nativeModule;

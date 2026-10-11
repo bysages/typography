@@ -21,13 +21,19 @@ export function createOCRManager<TOutputType extends OutputType>(
 
     recognizes:
       driver.recognizes ||
-      (async (inputs: OCRInput[], _recognizesOptions: RecognizesOptions = {}) => {
-        // Fallback: process inputs sequentially using recognize
-        const results: OCRResult<TOutputType>[] = [];
-        for (const input of inputs) {
-          const result = await ocr.recognize(input);
-          results.push(result);
-        }
+      (async (inputs: OCRInput[], recognizesOptions: RecognizesOptions = {}) => {
+        // Fallback: bounded-concurrency loop over recognize. Failures reject
+        // the whole batch, matching how a single recognize rejects.
+        const parallel = Math.max(1, recognizesOptions.parallel ?? inputs.length);
+        const results: OCRResult<TOutputType>[] = Array.from({ length: inputs.length });
+        let cursor = 0;
+        const runWorker = async () => {
+          while (cursor < inputs.length) {
+            const index = cursor++;
+            results[index] = await ocr.recognize(inputs[index]);
+          }
+        };
+        await Promise.all(Array.from({ length: Math.min(parallel, inputs.length) }, runWorker));
         return results;
       }),
 

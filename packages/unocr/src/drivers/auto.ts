@@ -30,12 +30,18 @@ async function isNativeOcrAvailable(): Promise<boolean> {
 }
 
 async function isTesseractCliAvailable(command = "tesseract"): Promise<boolean> {
-  const { spawn } = await import("node:child_process");
-  return new Promise((resolve) => {
-    const child = spawn(command, ["--version"], { stdio: "ignore" });
-    child.on("error", () => resolve(false));
-    child.on("close", (code) => resolve(code === 0));
-  });
+  // Probing is meaningless outside Node; the import itself would throw there.
+  if (typeof process === "undefined" || process.versions?.node === undefined) return false;
+  try {
+    const { spawn } = await import("node:child_process");
+    return new Promise((resolve) => {
+      const child = spawn(command, ["--version"], { stdio: "ignore" });
+      child.on("error", () => resolve(false));
+      child.on("close", (code) => resolve(code === 0));
+    });
+  } catch {
+    return false;
+  }
 }
 
 async function loadBackend(name: AutoBackend): Promise<(options: never) => AnyDriver> {
@@ -48,7 +54,18 @@ async function resolveBackend(options: AutoDriverOptions<OutputType>): Promise<A
   const { outputType, backend, ...rest } = options;
 
   const make = async (name: AutoBackend): Promise<AnyDriver> => {
-    const shared = { ...rest, outputType } as never;
+    // Language types differ per backend: cli takes a tesseract string,
+    // native takes an array, tesseract.js accepts both.
+    let langs = rest.langs;
+    if (typeof langs === "string" && name === "native") {
+      langs = langs
+        .split(/[,+]/)
+        .map((lang) => lang.trim())
+        .filter(Boolean);
+    } else if (Array.isArray(langs) && name === "cli") {
+      langs = langs.join("+");
+    }
+    const shared = { ...rest, langs, outputType } as never;
     // The factory signature is validated per backend module; the shared option
     // bag only ever carries DriverOptions fields.
     const factory = await loadBackend(name);
@@ -57,7 +74,9 @@ async function resolveBackend(options: AutoDriverOptions<OutputType>): Promise<A
 
   if (backend) return make(backend);
   if (await isNativeOcrAvailable()) return make("native");
-  if (await isTesseractCliAvailable()) return make("cli");
+  // Honor a custom executable path when probing the CLI backend.
+  const command = typeof rest.command === "string" ? rest.command : "tesseract";
+  if (await isTesseractCliAvailable(command)) return make("cli");
   return make("tesseract");
 }
 
