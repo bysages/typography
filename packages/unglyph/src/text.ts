@@ -161,7 +161,7 @@ export function renderTextToSVG(text: string, font: FontData, options: TextSVGOp
       : "";
 
   return [
-    `<svg xmlns="http://www.w3.org/2000/svg" data-missing${missingAttr} width="${(vbWidth * scale).toFixed(2)}" height="${(vbHeight * scale).toFixed(2)}" viewBox="${vbX.toFixed(2)} ${vbY.toFixed(2)} ${vbWidth.toFixed(2)} ${vbHeight.toFixed(2)}">`,
+    `<svg xmlns="http://www.w3.org/2000/svg"${missingAttr} width="${(vbWidth * scale).toFixed(2)}" height="${(vbHeight * scale).toFixed(2)}" viewBox="${vbX.toFixed(2)} ${vbY.toFixed(2)} ${vbWidth.toFixed(2)} ${vbHeight.toFixed(2)}">`,
     background,
     `<g fill="${fill}"${stroke}>${paths}</g>`,
     "</svg>",

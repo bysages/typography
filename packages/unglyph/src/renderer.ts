@@ -238,8 +238,20 @@ export async function renderGlyphToImage(
   glyph: GlyphData,
   options: ImageRenderOptions,
 ): Promise<Uint8Array> {
-  // Dynamic import canvas library
-  const { createCanvas } = await import("@napi-rs/canvas");
+  // Keep the specifier dynamic so browser bundlers do not try to resolve the
+  // Node-only optional dependency; canvas rasterization is a Node capability.
+  const specifier = ["@napi-rs", "canvas"].join("/");
+  let createCanvas: (typeof import("@napi-rs/canvas"))["createCanvas"];
+  try {
+    ({ createCanvas } = (await import(
+      /* @vite-ignore */ specifier
+    )) as typeof import("@napi-rs/canvas"));
+  } catch (error) {
+    throw new Error(
+      'Glyph image rendering requires Node and the optional dependency "@napi-rs/canvas".',
+      { cause: error },
+    );
+  }
 
   const scale = options.size / (options.unitsPerEm ?? 1000);
   const padding = options.padding ?? 20;

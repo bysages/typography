@@ -68,9 +68,37 @@ export interface BoundingBox {
 }
 
 /**
+ * OpenType `name` table metadata accepted at font creation time.
+ */
+export interface FontMetadata {
+  /** Copyright notice (nameID 0). */
+  copyright?: string;
+  /** Trademark (nameID 7). */
+  trademark?: string;
+  /** Manufacturer / vendor name (nameID 8). */
+  manufacturer?: string;
+  /** Designer name (nameID 9). */
+  designer?: string;
+  /** Long description (nameID 10). */
+  description?: string;
+  /** Vendor URL (nameID 11). */
+  manufacturerUrl?: string;
+  /** Designer URL (nameID 12). */
+  designerUrl?: string;
+  /** License text (nameID 13). */
+  license?: string;
+  /** License URL (nameID 14). */
+  licenseUrl?: string;
+  /** Version string, e.g. "1.0.0" (nameID 5); a "Version " prefix is added when missing. */
+  version?: string;
+}
+
+/**
  * Font options
  */
 export interface FontOptions {
+  /** Additional name-table metadata written through to generated fonts. */
+  metadata?: FontMetadata;
   /** Font family name */
   familyName: string;
   /** Style name */
@@ -176,11 +204,9 @@ export type GlyphOperation =
   | { type: "remove"; index: number };
 
 /**
- * Font export format. TrueType (glyf) outlines are not produced: the
- * opentype.js writer only emits CFF, so "otf" is the native target and
- * WOFF/WOFF2 wrap the same sfnt.
+ * Font export format. TTF uses TrueType glyf outlines; OTF uses CFF outlines.
  */
-export type FontFormat = "otf" | "woff" | "woff2";
+export type FontFormat = "ttf" | "otf" | "woff" | "woff2";
 
 /**
  * Font generation options
@@ -198,6 +224,8 @@ export interface FontGenerateOptions {
   ascender?: number;
   /** Descender depth (optional, uses font's value if not provided) */
   descender?: number;
+  /** Additional name-table metadata; overrides `FontData.metadata`. */
+  metadata?: FontMetadata;
 }
 
 /**
@@ -206,6 +234,8 @@ export interface FontGenerateOptions {
 export interface FontData {
   // Font metadata (from parsed fonts)
   familyName?: string;
+  /** Name-table metadata captured at creation time. */
+  metadata?: FontMetadata;
   format?: string;
   unitsPerEm?: number;
   ascent?: number;

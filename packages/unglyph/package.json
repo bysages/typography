@@ -1,27 +1,19 @@
 {
   "name": "unglyph",
-  "version": "0.1.0",
-  "description": "Unified font glyph manipulation library with simple API for parsing, creating, and modifying fonts",
+  "version": "0.1.1",
+  "description": "Parse, render, create, and subset TTF/OTF/WOFF/WOFF2 fonts with one typed glyph-first API",
   "keywords": [
     "font",
-    "font-creation",
-    "font-design",
-    "font-editor",
-    "font-engine",
-    "font-generation",
-    "font-manipulation",
-    "font-parsing",
-    "font-toolkit",
+    "font-subsetting",
+    "fontkit",
+    "fonts",
     "glyph",
+    "harfbuzz",
     "icon-font",
     "opentype",
-    "path-data",
-    "svg",
     "truetype",
     "typescript",
     "typography",
-    "variable-font",
-    "vector-graphics",
     "woff",
     "woff2"
   ],
@@ -37,24 +29,28 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bysages/typography.git"
+    "url": "git+https://github.com/bysages/typography.git",
+    "directory": "packages/unglyph"
   },
   "files": [
-    "dist",
-    "README.md"
+    "dist"
   ],
   "type": "module",
+  "sideEffects": false,
   "main": "dist/index.mjs",
   "types": "dist/index.d.mts",
   "exports": {
     ".": {
       "types": "./dist/index.d.mts",
-      "import": "./dist/index.mjs"
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
     },
     "./subset": {
       "types": "./dist/subset.d.mts",
-      "import": "./dist/subset.mjs"
-    }
+      "import": "./dist/subset.mjs",
+      "default": "./dist/subset.mjs"
+    },
+    "./package.json": "./package.json"
   },
   "scripts": {
     "dev": "basis build --stub",
@@ -81,5 +77,8 @@
     "@napi-rs/canvas": {
       "optional": true
     }
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

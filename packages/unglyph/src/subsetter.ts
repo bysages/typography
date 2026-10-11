@@ -254,6 +254,9 @@ export async function sfntToWoff(sfnt: Uint8Array): Promise<Uint8Array> {
     });
   }
 
+  // WOFF 1.0 requires table-directory entries to be sorted by tag.
+  entries.sort((a, b) => (a.tag < b.tag ? -1 : a.tag > b.tag ? 1 : 0));
+
   const headerLength = 44 + numTables * 20;
   const totalSfntSize = 12 + numTables * 16 + entries.reduce((s, e) => s + align4(e.origLength), 0);
   const total = headerLength + entries.reduce((sum, e) => sum + align4(e.compressed.length), 0);

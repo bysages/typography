@@ -8,8 +8,8 @@ import { convertFromFontkitGlyph } from "./utils";
  * Parse font file and return FontData
  */
 export async function parseFont(input: FontInput): Promise<FontData> {
-  // undio normalizes every supported input (paths and streams included),
-  // and several of them only resolve asynchronously.
+  // undio normalizes supported input shapes; several conversions resolve
+  // asynchronously, so parsing remains await-based across runtimes.
   const uint8Array = await toUint8Array(input);
 
   // Parse font using fontkit
@@ -19,6 +19,7 @@ export async function parseFont(input: FontInput): Promise<FontData> {
   const font = "fonts" in fontResult ? fontResult.fonts[0] : fontResult;
 
   const os2 = font["OS/2"];
+  const fsSelection = (os2 as unknown as { fsSelection?: number } | undefined)?.fsSelection ?? 0;
   const variationAxes: FontData["variationAxes"] = {};
   for (const [axisTag, axis] of Object.entries(font.variationAxes ?? {})) {
     variationAxes[axisTag] = {
@@ -53,7 +54,7 @@ export async function parseFont(input: FontInput): Promise<FontData> {
     version: font.version ? font.version.toString() : undefined,
     copyright: font.copyright || undefined,
     weight: os2?.usWeightClass || undefined,
-    italic: font.italicAngle !== 0,
+    italic: font.italicAngle !== 0 || (fsSelection & 0x0001) === 1,
     styleName: font.subfamilyName || "Regular",
     postscriptName: font.postscriptName || undefined,
     fullName: font.fullName || undefined,
