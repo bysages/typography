@@ -148,7 +148,7 @@ function renderPathToCanvas(
  * Render glyph to SVG string
  */
 export function renderGlyphToSVG(glyph: GlyphData, options: SVGRenderOptions): string {
-  const scale = options.size / 1000; // Assuming 1000 units per em
+  const scale = options.size / (options.unitsPerEm ?? 1000); // Assuming 1000 units per em
   const padding = options.padding || 0;
   const color = options.color || "black";
   const bgColor = options.backgroundColor || "transparent";
@@ -177,7 +177,7 @@ export function renderGlyphToSVG(glyph: GlyphData, options: SVGRenderOptions): s
  * Render glyph to Canvas context
  */
 export function renderGlyphToCanvas(glyph: GlyphData, options: CanvasRenderOptions): void {
-  const scale = options.size / 1000;
+  const scale = options.size / (options.unitsPerEm ?? 1000);
 
   // Save context state
   options.ctx.save();
@@ -232,7 +232,7 @@ export async function renderGlyphToImage(
   // Dynamic import canvas library
   const { createCanvas } = await import("@napi-rs/canvas");
 
-  const scale = options.size / 1000;
+  const scale = options.size / (options.unitsPerEm ?? 1000);
   const padding = options.padding || 20;
   const color = options.color || "black";
   const bgColor = options.backgroundColor || "transparent";

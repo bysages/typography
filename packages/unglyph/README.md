@@ -20,6 +20,37 @@ Built on top of proven font libraries like **fontkit** and **opentype.js**, ungl
 - 🔄 **Format Support**: Support for major font formats (TTF, OTF, WOFF, WOFF2)
 - 🎯 **Simple API**: Clean, intuitive API following KISS principles
 
+## Font Subsetting (subpath export)
+
+Subsetting is powered by the harfbuzz WASM build plus self-contained WOFF/WOFF2 container handling, so the same code runs in Node and in browsers without Node polyfills. It keeps layout features (GSUB/GPOS closure) intact.
+
+```typescript
+import { subsetFont } from "unglyph/subset";
+
+// 959KB -> 7KB for a page of text
+const woff2 = await subsetFont(fontBytes, "Hello World!", { targetFormat: "woff2" });
+
+// Instance a variable font while subsetting
+const regular = await subsetFont(vfBytes, text, {
+  variationAxes: { wght: 400 },
+});
+```
+
+### Text Layout and SVG Rendering
+
+```typescript
+import { parseFont, layoutText, renderTextToSVG } from "unglyph";
+
+const font = parseFont(fontBytes);
+const layout = layoutText("Hello", font, { letterSpacing: 0 });
+console.log(layout.width); // advance width in font units
+
+const svg = renderTextToSVG("Hello", font, { size: 64, color: "#111" });
+```
+
+> Note: layoutText/renderTextToSVG do simple horizontal advance layout
+> without OpenType shaping, kerning, or complex scripts.
+
 ## 📥 Installation
 
 ```bash
@@ -55,6 +86,10 @@ console.log(
 ```
 
 ### Font Creation
+
+> Rebuilding a font from extracted glyph paths (`createFont`/manager APIs) drops
+> layout features (GSUB/GPOS), hinting, and variation data. Use the subsetting
+> subpath when you need a shippable font that still shapes correctly.
 
 ```typescript
 import {

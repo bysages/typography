@@ -17,6 +17,9 @@ importers:
       '@types/node':
         specifier: 26.6.5
         version: 26.6.5
+      rolldown-plugin-wasm:
+        specifier: ^0.3.2
+        version: 0.3.2(rolldown@1.2.13)
       typescript:
         specifier: 6.0.3
         version: 6.0.3
@@ -31,12 +34,18 @@ importers:
       fontkit:
         specifier: 2.0.4
         version: 2.0.4
+      harfbuzzjs:
+        specifier: 1.6.3
+        version: 1.6.3
       opentype.js:
         specifier: 2.0.0
         version: 2.0.0
       undio:
         specifier: 0.2.0
         version: 0.2.0
+      woff2-encoder:
+        specifier: 2.0.0
+        version: 2.0.0
     devDependencies:
       '@napi-rs/canvas':
         specifier: ^1.0.11
@@ -60,6 +69,9 @@ importers:
         specifier: 0.2.0
         version: 0.2.0
     devDependencies:
+      '@napi-rs/system-ocr':
+        specifier: 1.2.0
+        version: 1.2.0
       ai:
         specifier: ^7.0.137
         version: 7.0.137(zod@4.1.12)
@@ -441,6 +453,34 @@ packages:
 
   '@napi-rs/canvas@1.0.11':
     resolution: {integrity: sha512-vt5tog1cr+QKadIddGe+3LrcX0EmjEd0izF717Uwf92mBmgYfq2XRmL2r4bZU40spB69exxhrBn9I91HYEr/7w==}
+    engines: {node: '>= 10'}
+
+  '@napi-rs/system-ocr-darwin-arm64@1.2.0':
+    resolution: {integrity: sha512-cK8dcDBEl3P4A04xmFJSHEJQxfDytaAIFyDCLqavTp92FVU5plESttWzZsqtTkS81/kzKiBfHyPQffSIndfWbQ==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@napi-rs/system-ocr-darwin-x64@1.2.0':
+    resolution: {integrity: sha512-u3TBvBGrhmT5Os6AfaxbUEg6VHe8lvrFJNPgThJgshJHyRXUx/wCfTyOroJ22KdVCP5AE4GpwS5tFHMb6p6iaQ==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [darwin]
+
+  '@napi-rs/system-ocr-win32-arm64-msvc@1.2.0':
+    resolution: {integrity: sha512-7ej8uMvmXomw3NXo5gZ5p2Nl6UKsHI+VRU3ELv0mhcxR0sJ6wFifYTu5bJrM1TGcz1/RsaX+TjWMmsDq8vriKQ==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [win32]
+
+  '@napi-rs/system-ocr-win32-x64-msvc@1.2.0':
+    resolution: {integrity: sha512-oOoCj3FPWDVctTxx98vMBiMI6m51U+w7SMmMefvmtpcpLelzZ/zYTqdwtWZFAjShaHO+RdaKkcpeVcQuBQiVbA==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [win32]
+
+  '@napi-rs/system-ocr@1.2.0':
+    resolution: {integrity: sha512-r0f2xNH6U+sth44qF+lUP+2WuHSGUBAry5KSCNuaLDGRbgslFqeROr/qJJ/fb6AjBp3Ov+CJP5MdrOWoaoM3cw==}
     engines: {node: '>= 10'}
 
   '@opentelemetry/api@1.9.0':
@@ -1455,6 +1495,9 @@ packages:
   harfbuzzjs@0.10.0:
     resolution: {integrity: sha512-SN8LVwCOzvTq3OPNd0+EAghgXugItz56wst567D1vs7LnnKGWprhi3EG58aVOBwhN8HEbQxL4I9NDWkcXUutRw==}
 
+  harfbuzzjs@1.6.3:
+    resolution: {integrity: sha512-R5Mfo1UUvQmZJmtScP7fBLKYKnYu82ZdtFT7WbQYeGb3Ut5PR3xfFCJ5/FjbcW5SAfb9cqCSny/KNjp+NJBx0w==}
+
   hast-util-from-html@2.0.3:
     resolution: {integrity: sha512-CUSRHXyKjzHov8yKsQjGOElXy/3EKpyX56ELnkHH34vDVw1N1XSQ1ZcAvTyAPtGqLTuKP/uxM+aLkSPqF/EtMw==}
 
@@ -1791,6 +1834,12 @@ packages:
       vue-tsc:
         optional: true
 
+  rolldown-plugin-wasm@0.3.2:
+    resolution: {integrity: sha512-WYjcRNvX8i3PoAPIbmENebUhn1b3nbkorLSGMBGBP5mPaSE5Jh5JWuVhRm3Nl5n6VL23OtWh3TOm0wwMYYV+8Q==}
+    engines: {node: ^22.18.0 || >=24.0.0}
+    peerDependencies:
+      rolldown: ^1.0.0
+
   rolldown@1.2.13:
     resolution: {integrity: sha512-/5apOkwWxtACcQtZ5WlrAsKS4JwXVThQPJZ3RqIruRY9UG9M8e0VlXN068xum/JRKA4aIUoJ13ghe/kGCvidiQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -2054,6 +2103,10 @@ packages:
     resolution: {integrity: sha512-Tb2FUhB4vUsGQlfSquQLYkApkuPAFQXGFzxWKHHumVz2dK+X1RUm/HnID4+TfIGYJ1kTcwOaCk/buYCEJr6YjQ==}
     engines: {node: '>=20.11'}
     hasBin: true
+
+  woff2-encoder@2.0.0:
+    resolution: {integrity: sha512-wH1rcskczCP5+BJABM88aM3hoEX1VUW6U+Ksx/7bmXvctWGqF+O/YQdC6vWQ7lJS7ny21a0MkAqcZyOP2O8CAg==}
+    engines: {node: '>= 18.x'}
 
   ws@8.22.0:
     resolution: {integrity: sha512-Ydggc987+RO0AnWtZ/7Wq9FtNvcrL1b/RO0ud9mWjUPgDrsAAwQSF51sm2hm1XofbU/4jkpGEsLFsZZxU+1DOg==}
@@ -2415,6 +2468,25 @@ snapshots:
       '@napi-rs/canvas-linux-x64-musl': 1.0.11
       '@napi-rs/canvas-win32-arm64-msvc': 1.0.11
       '@napi-rs/canvas-win32-x64-msvc': 1.0.11
+
+  '@napi-rs/system-ocr-darwin-arm64@1.2.0':
+    optional: true
+
+  '@napi-rs/system-ocr-darwin-x64@1.2.0':
+    optional: true
+
+  '@napi-rs/system-ocr-win32-arm64-msvc@1.2.0':
+    optional: true
+
+  '@napi-rs/system-ocr-win32-x64-msvc@1.2.0':
+    optional: true
+
+  '@napi-rs/system-ocr@1.2.0':
+    optionalDependencies:
+      '@napi-rs/system-ocr-darwin-arm64': 1.2.0
+      '@napi-rs/system-ocr-darwin-x64': 1.2.0
+      '@napi-rs/system-ocr-win32-arm64-msvc': 1.2.0
+      '@napi-rs/system-ocr-win32-x64-msvc': 1.2.0
 
   '@opentelemetry/api@1.9.0':
     optional: true
@@ -3080,6 +3152,8 @@ snapshots:
 
   harfbuzzjs@0.10.0: {}
 
+  harfbuzzjs@1.6.3: {}
+
   hast-util-from-html@2.0.3:
     dependencies:
       '@types/hast': 3.0.5
@@ -3403,6 +3477,10 @@ snapshots:
     transitivePeerDependencies:
       - oxc-resolver
 
+  rolldown-plugin-wasm@0.3.2(rolldown@1.2.13):
+    dependencies:
+      rolldown: 1.2.13
+
   rolldown@1.2.13:
     dependencies:
       '@oxc-project/types': 0.153.0
@@ -3717,6 +3795,8 @@ snapshots:
       isexe: 2.0.0
 
   why-is-node-running@3.2.1: {}
+
+  woff2-encoder@2.0.0: {}
 
   ws@8.22.0: {}
 

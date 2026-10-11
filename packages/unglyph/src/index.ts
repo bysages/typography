@@ -11,4 +11,6 @@ export * from "./parser";
 export * from "./creator";
 export * from "./renderer";
 export * from "./manager";
+export * from "./subsetter";
 export * from "./utils";
+export * from "./text";

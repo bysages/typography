@@ -1,4 +1,9 @@
-import * as opentype from "opentype.js";
+import opentypeModule from "opentype.js";
+import type * as opentype from "opentype.js";
+
+// opentype.js 2.x ships CJS; constructors live on the default export in Node ESM.
+const ot = ((opentypeModule as unknown as { default?: typeof opentype }).default ??
+  opentypeModule) as typeof opentype;
 
 import type { GlyphData, FontOptions, FontData, FontGenerateOptions } from "./types";
 import { convertToOpentypePath } from "./utils";
@@ -30,11 +35,11 @@ export function generateFont(fontData: FontData, options: FontGenerateOptions = 
   } = options;
 
   // Create required .notdef glyph
-  const notdefGlyph = new opentype.Glyph({
+  const notdefGlyph = new ot.Glyph({
     name: ".notdef",
     unicode: 0,
     advanceWidth: 650,
-    path: new opentype.Path(),
+    path: new ot.Path(),
   });
 
   // Create space glyph if not present
@@ -43,11 +48,11 @@ export function generateFont(fontData: FontData, options: FontGenerateOptions = 
 
   if (!hasSpace) {
     otGlyphs.push(
-      new opentype.Glyph({
+      new ot.Glyph({
         name: "space",
         unicode: 32,
         advanceWidth: 300,
-        path: new opentype.Path(),
+        path: new ot.Path(),
       }),
     );
   }
@@ -59,11 +64,11 @@ export function generateFont(fontData: FontData, options: FontGenerateOptions = 
       continue;
     }
 
-    const path = convertToOpentypePath(glyph.path);
+    const path = convertToOpentypePath(glyph.path, fontData.ascent || 0);
     const unicodeValue =
-      typeof glyph.unicode === "string" ? glyph.unicode.charCodeAt(0) : glyph.unicode;
+      typeof glyph.unicode === "string" ? (glyph.unicode.codePointAt(0) ?? 0) : glyph.unicode;
 
-    const otGlyph = new opentype.Glyph({
+    const otGlyph = new ot.Glyph({
       name: glyph.name || `glyph${unicodeValue}`,
       unicode: unicodeValue,
       advanceWidth: glyph.advanceWidth,
@@ -74,7 +79,7 @@ export function generateFont(fontData: FontData, options: FontGenerateOptions = 
   }
 
   // Create the font
-  const font = new opentype.Font({
+  const font = new ot.Font({
     familyName,
     styleName,
     unitsPerEm,
@@ -86,9 +91,13 @@ export function generateFont(fontData: FontData, options: FontGenerateOptions = 
   // Convert to buffer based on format
   switch (format) {
     case "ttf":
-    case "otf":
-      const arrayBuffer = font.toArrayBuffer();
-      return new Uint8Array(arrayBuffer);
+    case "otf": {
+      // opentype.js 2.x hardcodes the OTTO signature while writing glyf
+      // outlines, which strict consumers such as subset-font reject.
+      const bytes = new Uint8Array(font.toArrayBuffer());
+      bytes.set([0x00, 0x01, 0x00, 0x00], 0);
+      return bytes;
+    }
     case "woff":
       // For WOFF, we'd need additional library support
       throw new Error("WOFF format not yet implemented");
