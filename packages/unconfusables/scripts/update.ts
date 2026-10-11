@@ -5,7 +5,7 @@
  * the mixed-script / restriction-level APIs, and writes compact JSON datasets.
  */
 
-import { writeFileSync } from "node:fs";
+import { renameSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -15,6 +15,10 @@ const DATA_DIR = join(__dirname, "..", "src", "data");
 
 const BASE_URL = "https://www.unicode.org/Public/18.0.0/security/";
 const UCD_URL = "https://www.unicode.org/Public/18.0.0/ucd/";
+const CLDR_TAG = "release-48-2";
+// Fetched through the nexus CDN mirror instead of a raw GitHub URL for
+// consistent availability; the pinned tag keeps the data reproducible.
+const CLDR_URL = `https://nexus.funish.net/cdn/gh/unicode-org/cldr@${CLDR_TAG}/common/properties/`;
 
 interface Dataset {
   version: string;
@@ -31,6 +35,14 @@ interface IntentionalDataset {
 interface RangesDataset {
   version: string;
   ranges: [number, number, string][];
+}
+
+/** Write via a temp file + rename so a mid-run failure never leaves
+ * half-updated JSON behind. */
+function writeJsonAtomic(filePath: string, data: unknown): void {
+  const tmpPath = filePath + ".tmp";
+  writeFileSync(tmpPath, JSON.stringify(data, null, 2), "utf-8");
+  renameSync(tmpPath, filePath);
 }
 
 function parseRangeBoundary(token: string): number {
@@ -103,7 +115,7 @@ const SOURCES = [
   },
   {
     file: "script-metadata.json",
-    url: "https://cdn.jsdelivr.net/gh/unicode-org/cldr@main/common/properties/scriptMetadata.txt",
+    url: `${CLDR_URL}scriptMetadata.txt`,
     label: "scriptMetadata.txt",
     kind: "script-metadata" as const,
   },
@@ -120,7 +132,9 @@ async function fetchScriptNameMap(): Promise<Map<string, string>> {
   const content = await fetchText(`${UCD_URL}PropertyValueAliases.txt`, "PropertyValueAliases.txt");
   const map = new Map<string, string>();
   for (const line of content.split("\n")) {
-    const match = line.match(/^sc\s*;\s*([A-Za-z_]+)\s*;\s*([A-Za-z_]+)\s*(?:#|$)/);
+    const match = line.match(
+      /^sc\s*;\s*([A-Za-z_]+)\s*;\s*([A-Za-z_]+)(?:\s*;\s*[A-Za-z_]+)*\s*(?:#.*)?$/,
+    );
     if (match) map.set(match[2], match[1]);
   }
   return map;
@@ -209,7 +223,8 @@ function parseScriptMetadata(content: string): {
   scripts: Record<string, string>;
 } {
   const scripts: Record<string, string> = {};
-  let version = "unknown";
+  // scriptMetadata.txt has no inline version; attribute it to the pinned tag
+  let version = CLDR_TAG.replace("release-", "").replace("-", ".");
 
   for (const line of content.split("\n")) {
     const fileVersion = line.match(/^#\s*Unicode Version:\s*(.+)$/);
@@ -239,14 +254,14 @@ async function main() {
 
     if (source.kind === "confusables") {
       const data = parseConfusablesFile(content);
-      writeFileSync(filePath, JSON.stringify(data), "utf-8");
+      writeJsonAtomic(filePath, data);
       const kb = (await import("node:fs")).statSync(filePath).size;
       console.log(
         `💾 ${source.file}: ${Object.keys(data.confusables).length} mappings, version ${data.version} (${(kb / 1024).toFixed(0)} KB)`,
       );
     } else if (source.kind === "intentional") {
       const data = parseIntentionalFile(content);
-      writeFileSync(filePath, JSON.stringify(data), "utf-8");
+      writeJsonAtomic(filePath, data);
       console.log(`💾 ${source.file}: ${data.pairs.length} pairs, version ${data.version}`);
     } else if (source.kind === "derived-properties") {
       // One DerivedCoreProperties.txt download feeds three range tables.
@@ -257,12 +272,12 @@ async function main() {
       ] as const;
       for (const { file, property } of properties) {
         const data = parseDerivedProperty(content, property);
-        writeFileSync(join(DATA_DIR, file), JSON.stringify(data), "utf-8");
+        writeJsonAtomic(join(DATA_DIR, file), data);
         console.log(`Saved ${file}: ${data.ranges.length} ranges, version ${data.version}`);
       }
     } else if (source.kind === "script-metadata") {
       const data = parseScriptMetadata(content);
-      writeFileSync(filePath, JSON.stringify(data), "utf-8");
+      writeJsonAtomic(filePath, data);
       const kb = (await import("node:fs")).statSync(filePath).size;
       console.log(
         `💾 ${source.file}: ${Object.keys(data.scripts).length} scripts, version ${data.version} (${(kb / 1024).toFixed(0)} KB)`,
@@ -277,7 +292,7 @@ async function main() {
           nameMap.get(value) ?? value,
         ]);
       }
-      writeFileSync(filePath, JSON.stringify(data), "utf-8");
+      writeJsonAtomic(filePath, data);
       const kb = (await import("node:fs")).statSync(filePath).size;
       console.log(
         `💾 ${source.file}: ${data.ranges.length} ranges, version ${data.version} (${(kb / 1024).toFixed(0)} KB)`,

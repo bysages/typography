@@ -21,6 +21,7 @@ import type {
   ConfusableType,
   ConfusablesOptions,
   IdentifierStatus,
+  IdentifierType,
   IntentionalDetection,
 } from "./types";
 
@@ -55,9 +56,7 @@ function matchesType(record: ConfusableRecord, type: ConfusableType | "all" | un
 
 /** Resolve the confusable prototype mapping for a character. */
 export function getConfusables(char: string): ConfusableRecord | null {
-  const first = Array.from(char)[0];
-  if (!first) return null;
-  return confusables.confusables[first] ?? null;
+  return confusables.confusables[singleCodePoint(char)] ?? null;
 }
 
 /** Get all source characters whose prototype equals the given prototype string. */
@@ -65,18 +64,26 @@ export function getConfusableSources(prototype: string): string[] {
   return [...(getReverseLookup(confusables).get(prototype) ?? [])];
 }
 
+/** Reject multi-code-point strings in single-character APIs. */
+export function singleCodePoint(char: string): string {
+  const points = Array.from(char);
+  if (points.length !== 1) {
+    throw new RangeError(`Expected a single code point, received ${points.length}`);
+  }
+  return points[0];
+}
+
 /**
- * UTS #39 skeleton algorithm: NFD, map through the confusable table, NFD again.
+ * UTS #39 skeleton algorithm: NFD, strip default-ignorable code points, map
+ * through the confusable table, NFD again. Stripping runs before the mapping
+ * so ignorable characters are never remapped by confusable entries.
  */
 export function skeleton(text: string, options: ConfusablesOptions = {}): string {
   let out = "";
-  for (const char of iterateCodePoints(text)) {
+  for (const char of iterateCodePoints(text.normalize("NFD"))) {
+    if (isDefaultIgnorable(char)) continue;
     const record = confusables.confusables[char];
-    if (record && matchesType(record, options.type)) {
-      out += record.target;
-    } else if (!isDefaultIgnorable(char)) {
-      out += char;
-    }
+    out += record && matchesType(record, options.type) ? record.target : char;
   }
   return out.normalize("NFD");
 }
@@ -142,14 +149,16 @@ export function getConfusableVariations(text: string, options: ConfusablesOption
 
 /** Get the prototype replacement sequence for a character. */
 export function getConfusablePrototype(char: string): string {
-  const first = Array.from(char)[0];
-  if (!first) return char;
-  return confusables.confusables[first]?.target ?? char;
+  const first = singleCodePoint(char);
+  return confusables.confusables[first]?.target ?? first;
 }
 
 /** Randomly replace characters in a string with their prototype sequences. */
 export function randomizeConfusables(text: string, options: { probability?: number } = {}): string {
   const probability = options.probability ?? 0.5;
+  if (!Number.isFinite(probability) || probability < 0 || probability > 1) {
+    throw new RangeError(`probability must be within [0, 1], received ${probability}`);
+  }
   return Array.from(text)
     .map((char) => (Math.random() < probability ? getConfusablePrototype(char) : char))
     .join("");
@@ -179,17 +188,19 @@ function findIdentifierRange(
  * dataset default to "Restricted", so this always returns a status.
  */
 export function getIdentifierStatus(char: string): IdentifierStatus {
-  return findIdentifierRange(identifierStatus.ranges, char) ? "Allowed" : "Restricted";
+  return findIdentifierRange(identifierStatus.ranges, singleCodePoint(char))
+    ? "Allowed"
+    : "Restricted";
 }
 
 /**
  * UTS #39 Identifier_Type values for a character. Characters not listed in
  * the dataset default to ["Not_Character"].
  */
-export function getIdentifierTypes(char: string): string[] {
-  const hit = findIdentifierRange(identifierType.ranges, char);
+export function getIdentifierTypes(char: string): IdentifierType[] {
+  const hit = findIdentifierRange(identifierType.ranges, singleCodePoint(char));
   if (!hit) return ["Not_Character"];
-  return hit[2].split(" ");
+  return hit[2].split(" ") as IdentifierType[];
 }
 
 /** Intentional confusable targets for a character (may be several). */
@@ -209,9 +220,10 @@ export function detectIntentional(text: string): IntentionalDetection[] {
   return detections;
 }
 
-/** True when the two characters form an intentional confusable pair. */
+/** True when the two characters form an intentional confusable pair in
+ * either direction; the Unicode table itself is directional. */
 export function areIntentionalPair(a: string, b: string): boolean {
-  return getIntentionalTargets(a).includes(b);
+  return getIntentionalTargets(a).includes(b) || getIntentionalTargets(b).includes(a);
 }
 
 /** Metadata about the confusables dataset. */

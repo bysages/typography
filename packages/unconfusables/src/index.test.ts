@@ -12,7 +12,7 @@ import {
   randomizeConfusables,
   skeleton,
 } from "./index";
-import { getRestrictionLevel, isIdentifierWellFormed } from "./script";
+import { getRestrictionLevel, getScript, isIdentifierWellFormed, isMixedScript } from "./script";
 
 describe("skeleton", () => {
   it("maps sequence prototypes as one replacement", () => {
@@ -96,5 +96,48 @@ describe("getRestrictionLevel profile check", () => {
 
   it("yields unrestricted when well-formedness fails", () => {
     expect(getRestrictionLevel("1abc")).toBe("unrestricted");
+  });
+});
+
+describe("default-ignorable handling", () => {
+  it("strips skeleton-relevant ignorable code points before confusable mapping", () => {
+    // U+3164 HANGUL FILLER is both a confusable source and default-ignorable;
+    // UTS #39 requires stripping before mapping, so it must vanish entirely.
+    expect(skeleton("\u3164")).toBe("");
+    expect(skeleton("a\u3164b")).toBe("ab");
+  });
+});
+
+describe("script alias normalization", () => {
+  it("maps inherited marks to Zinh so Common/Inherited resolve to all scripts", () => {
+    expect(getScript("\u0300")).toBe("Zinh");
+  });
+
+  it("maps Coptic to Copt so Script_Extensions intersect", () => {
+    expect(getScript("\u2C80")).toBe("Copt");
+  });
+
+  it("treats inherited marks as single-script with Coptic text", () => {
+    // U+0300 combining grave above + U+2C80 coptic capital alpha
+    expect(isMixedScript("\u0300\u2C80")).toBe(false);
+  });
+});
+
+describe("intentional pair symmetry", () => {
+  it("matches in both directions", () => {
+    const [source, target] =
+      getIntentionalTargets("A").length > 0
+        ? ["A", getIntentionalTargets("A")[0]]
+        : ["l", getIntentionalTargets("l")[0]];
+    expect(areIntentionalPair(source, target)).toBe(true);
+    expect(areIntentionalPair(target, source)).toBe(true);
+  });
+});
+
+describe("single code point validation", () => {
+  it("rejects multi-code-point input", () => {
+    expect(() => getConfusablePrototype("ab")).toThrow(RangeError);
+    expect(() => getConfusables("ab")).toThrow(RangeError);
+    expect(() => getScript("ab")).toThrow(RangeError);
   });
 });
