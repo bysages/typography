@@ -1,10 +1,13 @@
 import type {
+  BoundingBox,
+  CanvasContext2D,
   GlyphData,
   RenderOptions,
   SVGRenderOptions,
   CanvasRenderOptions,
   ImageRenderOptions,
 } from "./types";
+import { escapeSvgAttr } from "./utils";
 
 /**
  * Type guard to check if options are for Canvas rendering
@@ -23,7 +26,7 @@ function isImageOptions(options: RenderOptions): options is ImageRenderOptions {
 /**
  * Calculate glyph bounds
  */
-function calculateBounds(glyph: GlyphData) {
+function calculateBounds(glyph: GlyphData): BoundingBox {
   if (glyph.path.bounds) {
     return glyph.path.bounds;
   }
@@ -60,18 +63,24 @@ function calculateBounds(glyph: GlyphData) {
     }
   }
 
+  const safeMinX = minX === Infinity ? 0 : minX;
+  const safeMinY = minY === Infinity ? 0 : minY;
+  const safeMaxX = maxX === -Infinity ? 0 : maxX;
+  const safeMaxY = maxY === -Infinity ? 0 : maxY;
   return {
-    minX: minX === Infinity ? 0 : minX,
-    minY: minY === Infinity ? 0 : minY,
-    maxX: maxX === -Infinity ? 0 : maxX,
-    maxY: maxY === -Infinity ? 0 : maxY,
+    minX: safeMinX,
+    minY: safeMinY,
+    maxX: safeMaxX,
+    maxY: safeMaxY,
+    width: safeMaxX - safeMinX,
+    height: safeMaxY - safeMinY,
   };
 }
 
 /**
  * Convert path commands to SVG path string
  */
-function pathToSVG(glyph: GlyphData, bounds: any, scale: number, padding: number): string {
+function pathToSVG(glyph: GlyphData, bounds: BoundingBox, scale: number, padding: number): string {
   return glyph.path.commands
     .map((cmd) => {
       switch (cmd.type) {
@@ -97,10 +106,10 @@ function pathToSVG(glyph: GlyphData, bounds: any, scale: number, padding: number
  */
 function renderPathToCanvas(
   glyph: GlyphData,
-  bounds: any,
+  bounds: BoundingBox,
   scale: number,
   padding: number,
-  ctx: any,
+  ctx: CanvasContext2D,
   color?: string,
 ) {
   ctx.save();
@@ -149,9 +158,9 @@ function renderPathToCanvas(
  */
 export function renderGlyphToSVG(glyph: GlyphData, options: SVGRenderOptions): string {
   const scale = options.size / (options.unitsPerEm ?? 1000); // Assuming 1000 units per em
-  const padding = options.padding || 0;
-  const color = options.color || "black";
-  const bgColor = options.backgroundColor || "transparent";
+  const padding = options.padding ?? 0;
+  const color = escapeSvgAttr(options.color || "black");
+  const bgColor = escapeSvgAttr(options.backgroundColor || "transparent");
 
   // Calculate bounds
   const bounds = calculateBounds(glyph);
@@ -163,7 +172,7 @@ export function renderGlyphToSVG(glyph: GlyphData, options: SVGRenderOptions): s
 
   const stroke =
     options.strokeColor && options.strokeWidth
-      ? ` stroke="${options.strokeColor}" stroke-width="${options.strokeWidth}"`
+      ? ` stroke="${escapeSvgAttr(options.strokeColor)}" stroke-width="${options.strokeWidth}"`
       : "";
 
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -228,12 +237,12 @@ export function renderGlyphToCanvas(glyph: GlyphData, options: CanvasRenderOptio
 export async function renderGlyphToImage(
   glyph: GlyphData,
   options: ImageRenderOptions,
-): Promise<Buffer> {
+): Promise<Uint8Array> {
   // Dynamic import canvas library
   const { createCanvas } = await import("@napi-rs/canvas");
 
   const scale = options.size / (options.unitsPerEm ?? 1000);
-  const padding = options.padding || 20;
+  const padding = options.padding ?? 20;
   const color = options.color || "black";
   const bgColor = options.backgroundColor || "transparent";
   const format = options.format;
@@ -275,11 +284,11 @@ export async function renderGlyphToImage(
  */
 export function renderGlyph(glyph: GlyphData, options: SVGRenderOptions): string;
 export function renderGlyph(glyph: GlyphData, options: CanvasRenderOptions): void;
-export function renderGlyph(glyph: GlyphData, options: ImageRenderOptions): Promise<Buffer>;
+export function renderGlyph(glyph: GlyphData, options: ImageRenderOptions): Promise<Uint8Array>;
 export function renderGlyph(
   glyph: GlyphData,
   options: RenderOptions,
-): string | void | Promise<Buffer> {
+): string | void | Promise<Uint8Array> {
   if (isCanvasOptions(options)) {
     return renderGlyphToCanvas(glyph, options);
   } else if (isImageOptions(options)) {

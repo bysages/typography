@@ -17,6 +17,9 @@ import { convertToOpentypePath } from "./utils";
 export function createFont(glyphs: GlyphData[], options: FontOptions): FontData {
   return {
     familyName: options.familyName,
+    styleName: options.styleName,
+    weight: options.weight,
+    italic: options.italic,
     unitsPerEm: options.unitsPerEm || 1000,
     ascent: options.ascender || 800,
     descent: options.descender || -200,
@@ -34,18 +37,21 @@ export async function generateFont(
   const {
     format = "otf",
     familyName = fontData.familyName || "Untitled Font",
-    styleName = "Regular",
+    styleName = fontData.styleName || "Regular",
     unitsPerEm = fontData.unitsPerEm || 1000,
     ascender = fontData.ascent || 800,
     descender = fontData.descent || -200,
   } = options;
 
-  // Create required .notdef glyph
+  // Reuse the parsed .notdef outline and advance when present so a
+  // generate round-trip keeps the original gid 0; otherwise synthesize an
+  // empty one (opentype.js requires a .notdef glyph to exist).
+  const parsedNotdef = fontData.glyphs.find((glyph) => glyph.unicode === 0);
   const notdefGlyph = new ot.Glyph({
     name: ".notdef",
     unicode: 0,
-    advanceWidth: 650,
-    path: new ot.Path(),
+    advanceWidth: parsedNotdef?.advanceWidth ?? 650,
+    path: parsedNotdef ? convertToOpentypePath(parsedNotdef.path, ascender) : new ot.Path(),
   });
 
   // Create space glyph if not present

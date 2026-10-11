@@ -148,7 +148,7 @@ import { GlyphManager, createGlyphManager } from "unglyph";
 // Create manager with initial glyphs
 const manager = createGlyphManager(initialGlyphs);
 
-// CRUD operations
+// CRUD operations (ids are glyph indices, not Unicode; use findByUnicode for code points)
 manager.add(newGlyph);
 const glyph = manager.get(65);
 const exists = manager.has(65);
@@ -399,16 +399,24 @@ The library provides a unified, type-safe API that abstracts away the complexity
 ```
 packages/unglyph/
 ├── src/
-│   ├── types.ts          # TypeScript type definitions
+│   ├── types.ts           # TypeScript type definitions
 │   ├── parser.ts          # Font parsing functionality
 │   ├── creator.ts         # Font creation functionality
-│   ├── renderer.ts        # SVG rendering functionality
+│   ├── renderer.ts        # SVG/canvas/image rendering
+│   ├── subsetter.ts       # HarfBuzz subsetting and WOFF containers
+│   ├── text.ts            # Text layout and text-to-SVG rendering
+│   ├── utils.ts           # Shared path conversion helpers
 │   ├── manager.ts         # Glyph manager class
 │   └── index.ts           # Main exports
 ├── dist/                  # Built distribution files
 ├── package.json           # Package configuration
 └── README.md              # This file
 ```
+
+## 🖥️ Runtime Requirements
+
+- WOFF1 and WOFF2 containers use the web platform `Blob` / `CompressionStream` / `DecompressionStream` APIs: Node 18+ or any modern browser. No polyfill is bundled.
+- The package ships ESM only. Image rendering (`renderGlyphToImage`) dynamically imports `@napi-rs/canvas`, which requires Node.
 
 ## 🔗 Related
 

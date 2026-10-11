@@ -1,3 +1,12 @@
+/** Escape an untrusted value used inside a double-quoted SVG attribute. */
+export function escapeSvgAttr(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
 import fontkit from "fontkit";
 import opentypeModule from "opentype.js";
 import type * as opentype from "opentype.js";
@@ -47,7 +56,7 @@ export function convertFromFontkitGlyph(
   ascent?: number,
   unicode?: number,
 ): GlyphData {
-  const codePoint = unicode || fontkitGlyph.codePoints[0] || id;
+  const codePoint = unicode ?? fontkitGlyph.codePoints?.[0] ?? id;
 
   // Generate glyph name from unicode if not available
   let glyphName = fontkitGlyph.name;

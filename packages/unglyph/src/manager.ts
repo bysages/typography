@@ -34,7 +34,8 @@ export class GlyphManager {
   }
 
   /**
-   * Update a glyph
+   * Update a glyph by id. Passing a different updates.index moves the glyph;
+   * a glyph already occupying the target index is replaced (last wins).
    */
   update(id: number, updates: Partial<GlyphData>): boolean {
     const existing = this.glyphs.get(id);

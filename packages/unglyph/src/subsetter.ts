@@ -24,6 +24,8 @@ export interface SubsetVariationAxis {
 export interface SubsetOptions {
   /** Output container. Defaults to the input format. */
   targetFormat?: SubsetTargetFormat;
+  /** Face index when subsetting a TrueType collection. Defaults to 0. */
+  faceIndex?: number;
   /** Preserve these name table IDs on top of the HarfBuzz defaults. */
   preserveNameIds?: number[];
   /** Partially or fully instance variable axes: pinned numbers or ranges. */
@@ -127,15 +129,39 @@ function align4(length: number): number {
   return (length + 3) & ~3;
 }
 
+/**
+ * Compute the sfnt table checksum: 32-bit sum of big-endian words, padded to 4.
+ * The head table stores its own adjustment at bytes 8-11; the spec defines its
+ * table checksum with those bytes treated as zero.
+ */
+function tableChecksum(data: Uint8Array, isHead = false): number {
+  let sum = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    if (isHead && i === 8) continue;
+    sum =
+      (sum +
+        ((data[i] << 24) |
+          (data[i + 1] << 16) |
+          ((data[i + 2] ?? 0) << 8) |
+          (data[i + 3] ?? 0))) >>>
+      0;
+  }
+  return sum >>> 0;
+}
+
 /** Rebuild a standalone sfnt from parsed WOFF1 tables. */
 async function woffToSfnt(woff: Uint8Array): Promise<Uint8Array> {
   const numTables = readU16(woff, 12);
   const flavor = readU32(woff, 4);
 
+  if (numTables === 0) {
+    throw new Error("WOFF declares zero tables");
+  }
   if (woff.length < 44 + numTables * 20) {
     throw new Error("WOFF table directory extends past the end of the file");
   }
   const tables: SfntTable[] = [];
+  const tableRanges: { start: number; end: number }[] = [];
   for (let i = 0; i < numTables; i++) {
     const dir = 44 + i * 20;
     const tag = readTag(woff, dir);
@@ -154,9 +180,18 @@ async function woffToSfnt(woff: Uint8Array): Promise<Uint8Array> {
     if (data.length !== origLength) {
       throw new Error(`WOFF table ${tag} failed to decompress to ${origLength} bytes`);
     }
+    if (checksum !== 0 && tableChecksum(data, tag === "head") !== checksum) {
+      throw new Error(`WOFF table ${tag} failed its checksum`);
+    }
     tables.push({ tag, checksum, data });
+    tableRanges.push({ start: offset, end: offset + compLength });
   }
-  tables.sort((a, b) => (a.tag < b.tag ? -1 : 1));
+  const sortedRanges = [...tableRanges].sort((a, b) => a.start - b.start);
+  for (let i = 1; i < sortedRanges.length; i++) {
+    if (sortedRanges[i].start < sortedRanges[i - 1].end) {
+      throw new Error("WOFF table data ranges overlap");
+    }
+  }
 
   const headerLength = 12 + numTables * 16;
   const total = headerLength + tables.reduce((sum, t) => sum + align4(t.data.length), 0);
@@ -178,13 +213,27 @@ async function woffToSfnt(woff: Uint8Array): Promise<Uint8Array> {
     out.set(table.data, dataOffset);
     dataOffset += align4(table.data.length);
   });
+
+  // The rebuild may have moved tables, so recompute head.checkSumAdjustment:
+  // zero the field, checksum the whole font, store the spec remainder.
+  const headIndex = tables.findIndex((table) => table.tag === "head");
+  if (headIndex >= 0) {
+    const headOffset = readU32(out, 12 + headIndex * 16 + 8);
+    writeU32(out, headOffset + 8, 0);
+    writeU32(out, headOffset + 8, (0xb1b0afba - tableChecksum(out)) >>> 0);
+  }
   return out;
 }
 
 /** Wrap a standalone sfnt into the legacy WOFF1 container. */
 export async function sfntToWoff(sfnt: Uint8Array): Promise<Uint8Array> {
+  if (sfnt.length < 12) throw new Error("Not a valid sfnt font: shorter than the header");
   const numTables = readU16(sfnt, 4);
   const flavor = readU32(sfnt, 0);
+  if (numTables === 0) throw new Error("Not a valid sfnt font: zero tables");
+  if (12 + numTables * 16 > sfnt.length) {
+    throw new Error("sfnt table directory extends past the end of the file");
+  }
 
   const entries: { tag: string; compressed: Uint8Array; origLength: number; checksum: number }[] =
     [];
@@ -192,6 +241,9 @@ export async function sfntToWoff(sfnt: Uint8Array): Promise<Uint8Array> {
     const entry = 12 + i * 16;
     const offset = readU32(sfnt, entry + 8);
     const origLength = readU32(sfnt, entry + 12);
+    if (offset + origLength > sfnt.length) {
+      throw new Error(`sfnt table ${readTag(sfnt, entry)} extends past the end of the file`);
+    }
     const raw = sfnt.subarray(offset, offset + origLength);
     const compressed = await zlibCompress(raw);
     entries.push({
@@ -283,6 +335,11 @@ const HB_SUBSET_FLAGS_GLYPH_NAMES = 128;
 const HB_SUBSET_FLAGS_NO_LAYOUT_CLOSURE = 512;
 
 function hbTag(tag: string): number {
+  if (!/^[A-Za-z0-9\x20]{4}$/.test(tag)) {
+    throw new Error(
+      `Invalid OpenType tag: ${JSON.stringify(tag)} (expected four letters, digits, or spaces)`,
+    );
+  }
   return tag.split("").reduce((acc, ch) => (acc << 8) + ch.charCodeAt(0), 0);
 }
 
@@ -357,6 +414,8 @@ function hbSubset(
     if (!input) throw new Error("hb_subset_input_create_or_fail (harfbuzz) failed");
 
     const layoutFeatures = harfbuzz.hb_subset_input_set(input, HB_SUBSET_SETS_LAYOUT_FEATURE_TAG);
+    if (!layoutFeatures)
+      throw new Error("hb_subset_input_set (harfbuzz) failed for layout features");
     harfbuzz.hb_set_clear(layoutFeatures);
     if (keepFeatures === undefined) {
       // equivalent of --layout-features=*
@@ -367,6 +426,7 @@ function hbSubset(
 
     if (preserveNameIds) {
       const inputNameIds = harfbuzz.hb_subset_input_set(input, HB_SUBSET_SETS_NAME_ID);
+      if (!inputNameIds) throw new Error("hb_subset_input_set (harfbuzz) failed for name IDs");
       for (const nameId of preserveNameIds) harfbuzz.hb_set_add(inputNameIds, nameId);
     }
 
@@ -380,12 +440,15 @@ function hbSubset(
 
     if (options.dropTables) {
       const inputDropTables = harfbuzz.hb_subset_input_set(input, HB_SUBSET_SETS_DROP_TABLE_TAG);
+      if (!inputDropTables)
+        throw new Error("hb_subset_input_set (harfbuzz) failed for drop tables");
       for (const tag of options.dropTables) harfbuzz.hb_set_add(inputDropTables, hbTag(tag));
     }
 
     const inputUnicodes = harfbuzz.hb_subset_input_unicode_set(input);
     if (text === undefined) {
-      // equivalent of --gids=*
+      // Inverted Unicode set: keeps every cmap-reachable glyph, including
+      // those not reachable from any text run.
       harfbuzz.hb_set_clear(inputUnicodes);
       harfbuzz.hb_set_invert(inputUnicodes);
     } else {
@@ -482,7 +545,7 @@ export async function subsetFont(
       sfnt,
       keepAllGlyphs ? undefined : text,
       options,
-      inputFormat === "collection" ? 0 : undefined,
+      inputFormat === "collection" ? (options.faceIndex ?? 0) : undefined,
     ),
   );
 
