@@ -1,6 +1,6 @@
 {
   "name": "unglyph",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Parse, render, create, and subset TTF/OTF/WOFF/WOFF2 fonts with one typed glyph-first API",
   "keywords": [
     "font",

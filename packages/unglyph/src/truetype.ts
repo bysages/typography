@@ -451,21 +451,9 @@ function buildName(records: NameRecord[]): Uint8Array {
   const entries: { id: number; offset: number; length: number }[] = [];
   for (const record of records) {
     if (!record.value) continue;
-    entries.push({
-      id: record.id,
-      offset: storage.length,
-      length: Array.from(record.value).length * 2,
-    });
-    for (const char of record.value) {
-      const code = char.codePointAt(0) ?? 0;
-      if (code > 0xffff) {
-        const offset = code - 0x10000;
-        storage.u16(0xd800 + (offset >> 10));
-        storage.u16(0xdc00 + (offset & 0x3ff));
-      } else {
-        storage.u16(code);
-      }
-    }
+    const start = storage.length;
+    storage.utf16(record.value);
+    entries.push({ id: record.id, offset: start, length: storage.length - start });
   }
   const writer = new Writer();
   writer.u16(0); // format
@@ -577,17 +565,7 @@ function buildSfnt(tables: { tag: string; data: Uint8Array }[]): Uint8Array {
   }
   const bytes = out.done();
   // checkSumAdjustment over the whole font with the field zeroed.
-  let sum = 0;
-  for (let i = 0; i < bytes.length; i += 4) {
-    sum =
-      (sum +
-        ((bytes[i] << 24) |
-          (bytes[i + 1] << 16) |
-          ((bytes[i + 2] ?? 0) << 8) |
-          (bytes[i + 3] ?? 0))) >>>
-      0;
-  }
-  const adjustment = (0xb1b0afba - sum) >>> 0;
+  const adjustment = (0xb1b0afba - tableChecksum(bytes)) >>> 0;
   const headIndex = sorted.findIndex((table) => table.tag === "head");
   const headOffset = offsets[headIndex];
   bytes[headOffset + 8] = (adjustment >>> 24) & 0xff;
@@ -601,6 +579,7 @@ export interface TrueTypeOptions {
   familyName: string;
   styleName: string;
   postscriptName: string;
+  fullName?: string;
   unitsPerEm: number;
   ascent: number;
   descent: number;
@@ -645,7 +624,7 @@ export function buildTrueTypeFont(fontData: FontData, options: TrueTypeOptions):
   const metadata: FontMetadata = options.metadata ?? {};
   const version = metadata.version ?? fontData.version ?? "1.0";
   const versionText = version.startsWith("Version ") ? version : `Version ${version}`;
-  const fullName = `${options.familyName} ${options.styleName}`;
+  const fullName = options.fullName ?? `${options.familyName} ${options.styleName}`;
   const ascent = Math.round(options.ascent);
   const descent = Math.round(options.descent);
   const lineGap = Math.round(options.lineGap ?? 0);

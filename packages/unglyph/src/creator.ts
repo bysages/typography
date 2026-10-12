@@ -19,11 +19,17 @@ export function createFont(glyphs: GlyphData[], options: FontOptions): FontData 
   return {
     familyName: options.familyName,
     styleName: options.styleName,
+    postscriptName: options.postscriptName,
+    fullName: options.fullName,
     weight: options.weight,
     italic: options.italic,
     unitsPerEm: options.unitsPerEm || 1000,
     ascent: options.ascender || 800,
     descent: options.descender || -200,
+    lineGap: options.lineGap,
+    capHeight: options.capHeight,
+    xHeight: options.xHeight,
+    widthClass: options.widthClass,
     metadata: options.metadata,
     glyphs,
   };
@@ -133,7 +139,16 @@ export async function generateFont(
       ? version
       : `Version ${version}`
     : undefined;
-  const postscriptName = toPostScriptName(familyName, styleName);
+  // Keep the parsed PostScript name only when the family was not overridden,
+  // so renamed fonts derive a fresh OTS-safe name instead of the stale one.
+  const familyUnchanged = familyName === (fontData.familyName || "Untitled Font");
+  const postscriptName =
+    (familyUnchanged && fontData.postscriptName) || toPostScriptName(familyName, styleName);
+  const fullName = fontData.fullName || `${familyName} ${styleName}`;
+  const os2Overrides: Record<string, number> = {};
+  if (fontData.xHeight !== undefined) os2Overrides.sxHeight = Math.round(fontData.xHeight);
+  if (fontData.capHeight !== undefined) os2Overrides.sCapHeight = Math.round(fontData.capHeight);
+  if (fontData.lineGap !== undefined) os2Overrides.sTypoLineGap = Math.round(fontData.lineGap);
   const processed = prepareGlyphs(fontData);
 
   if (format === "ttf") {
@@ -142,11 +157,14 @@ export async function generateFont(
       {
         familyName,
         styleName,
-        postscriptName: postscriptName,
+        postscriptName,
+        fullName,
         unitsPerEm,
         ascent: ascender,
         descent: descender,
+        lineGap: fontData.lineGap,
         weight: fontData.weight,
+        widthClass: fontData.widthClass,
         italic: fontData.italic,
         metadata: { ...metadata, version: versionText?.replace(/^Version /, "") },
       },
@@ -167,7 +185,10 @@ export async function generateFont(
     ascender,
     descender,
     weightClass: fontData.weight,
+    widthClass: fontData.widthClass,
+    fullName,
     postScriptName: postscriptName,
+    ...(Object.keys(os2Overrides).length > 0 ? { tables: { os2: os2Overrides } } : {}),
     italicAngle: fontData.italic ? -12 : 0,
     ...(versionText ? { version: versionText } : {}),
     ...(metadata.copyright ? { copyright: metadata.copyright } : {}),

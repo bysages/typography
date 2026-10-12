@@ -62,11 +62,7 @@ export function convertFromFontkitGlyph(
   let glyphName = fontkitGlyph.name;
   if (!glyphName && codePoint) {
     // Standard unicode naming for common characters
-    if (codePoint >= 65 && codePoint <= 90) {
-      // A-Z
-      glyphName = String.fromCharCode(codePoint);
-    } else if (codePoint >= 97 && codePoint <= 122) {
-      // a-z
+    if ((codePoint >= 65 && codePoint <= 90) || (codePoint >= 97 && codePoint <= 122)) {
       glyphName = String.fromCharCode(codePoint);
     } else if (codePoint === 32) {
       glyphName = "space";

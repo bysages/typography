@@ -49,6 +49,15 @@ const svg = renderGlyphToSVG(glyph, {
 });
 ```
 
+Only need the name table? Skip glyph decoding entirely:
+
+```ts
+import { parseFontMetadata } from "unglyph";
+
+const metadata = await parseFontMetadata(fontBytes);
+console.log(metadata.designer, metadata.license, metadata.version);
+```
+
 Create glyph data once and export it as a real font:
 
 ```ts
@@ -85,7 +94,7 @@ const regular = await subsetFont(variableFontBytes, "Hello world", {
 });
 ```
 
-> `createFont` rebuilds from extracted paths, so it intentionally drops hinting and original layout features. Use `subsetFont` when the output must remain a faithful, shippable font; use creation APIs for generated fonts such as icon and picture fonts.
+> `createFont` rebuilds from extracted paths, so it intentionally drops hinting and original layout features. Use `subsetFont` when the output must remain a faithful, shippable font; use creation APIs for generated fonts such as icon and picture fonts. Scalar identity — names, metrics, OS/2 heights and width class, and full name-table metadata — is preserved across a `parseFont` → `createFont` → `generateFont` round trip; variable axes, color tables, and layout features are not rebuilt.
 
 The normalized path model uses SVG direction: `y` increases downward and the baseline is `0`. Node-only image rendering requires installing `@napi-rs/canvas`.
 

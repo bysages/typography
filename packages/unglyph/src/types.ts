@@ -101,6 +101,18 @@ export interface FontOptions {
   metadata?: FontMetadata;
   /** Font family name */
   familyName: string;
+  /** Explicit PostScript name; derived from family/style when omitted. */
+  postscriptName?: string;
+  /** Explicit full name; derived from family + style when omitted. */
+  fullName?: string;
+  /** hhea line gap (written to OS/2 typo metrics on CFF output). */
+  lineGap?: number;
+  /** OS/2 capital height. */
+  capHeight?: number;
+  /** OS/2 lowercase height. */
+  xHeight?: number;
+  /** OS/2 width class (1-9). */
+  widthClass?: number;
   /** Style name */
   styleName?: string;
   /** Units per em */
