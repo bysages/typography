@@ -14,7 +14,7 @@ import type {
   OutputType,
   RecognizesOptions,
 } from "..";
-import { DEFAULT_PARALLEL } from "../concurrency";
+import { DEFAULT_PARALLEL, runWithConcurrency } from "../concurrency";
 import { formatDocument } from "../document";
 
 export type AIDriverOptions<T extends OutputType = OutputType> = DriverOptions<T> & {
@@ -134,27 +134,15 @@ export default function aiDriver<TOutputType extends OutputType>(
       recognizesOptions: RecognizesOptions = {},
     ): Promise<OCRResult<TOutputType>[]> => {
       const parallel = Math.max(1, recognizesOptions.parallel ?? DEFAULT_PARALLEL);
-      const results: OCRResult<TOutputType>[] = Array.from({ length: inputs.length });
-      const failures: { index: number; reason: unknown }[] = [];
-
-      // Fixed-width worker pool so at most `parallel` requests are in flight.
-      let cursor = 0;
-      const runWorker = async () => {
-        while (cursor < inputs.length) {
-          const index = cursor++;
-          try {
-            results[index] = await recognize(inputs[index]);
-          } catch (reason) {
-            failures.push({ index, reason });
-          }
-        }
-      };
-      await Promise.all(Array.from({ length: Math.min(parallel, inputs.length) }, runWorker));
+      const failures: unknown[] = [];
+      const results = await runWithConcurrency(inputs, parallel, recognize, (reason) =>
+        failures.push(reason),
+      );
 
       if (failures.length > 0) {
         throw new AggregateError(
-          failures.map((failure) => failure.reason),
-          "AI OCR failed for " + failures.length + " of " + inputs.length + " inputs",
+          failures,
+          `AI OCR failed for ${failures.length} of ${inputs.length} inputs`,
         );
       }
       return results;

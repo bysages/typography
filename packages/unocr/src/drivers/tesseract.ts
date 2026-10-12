@@ -13,6 +13,7 @@ import type {
   OutputType,
   RecognizesOptions,
 } from "..";
+import { DEFAULT_PARALLEL, runWithConcurrency } from "../concurrency";
 import { formatDocument } from "../document";
 import { readImageSize } from "../image-size";
 
@@ -23,6 +24,8 @@ export type TesseractDriverOptions<TOutputType extends OutputType> =
       langs?: string | string[];
       /** OCR engine mode. Defaults to LSTM_ONLY. */
       oem?: Tesseract.OEM;
+      /** Keep the batch scheduler workers alive across recognizes calls until dispose. */
+      persistWorkers?: boolean;
     };
 
 interface PixelBox {
@@ -100,8 +103,31 @@ export function pageToDocument(page: Page, source?: Uint8Array): OCRDocument {
 export default function tesseractDriver<TOutputType extends OutputType>(
   options: TesseractDriverOptions<TOutputType>,
 ): Driver<TOutputType, TesseractDriverOptions<TOutputType>> {
-  const { outputType, ...tesseractOptions } = options;
+  const { outputType, persistWorkers = false, ...tesseractOptions } = options;
   let workerPromise: Promise<Worker> | null = null;
+  let scheduler: Tesseract.Scheduler | null = null;
+  let schedulerWorkers = 0;
+  let growing: Promise<Tesseract.Scheduler> | null = null;
+
+  // Lazily grow the batch scheduler to the requested width; workers created
+  // here stay alive across calls when persistWorkers is set.
+  const ensureScheduler = (workerCount: number): Promise<Tesseract.Scheduler> => {
+    growing ??= (async () => {
+      scheduler ??= createScheduler();
+      while (schedulerWorkers < workerCount) {
+        scheduler.addWorker(
+          await Tesseract.createWorker(
+            tesseractOptions.langs || "eng",
+            tesseractOptions.oem || 1,
+            tesseractOptions,
+          ),
+        );
+        schedulerWorkers++;
+      }
+      return scheduler;
+    })();
+    return growing;
+  };
 
   // Cache the creation promise so concurrent recognizes share one worker.
   const initializeWorker = (): Promise<Worker> => {
@@ -137,23 +163,16 @@ export default function tesseractDriver<TOutputType extends OutputType>(
       inputs: OCRInput[],
       recognizesOptions: RecognizesOptions = {},
     ): Promise<OCRResult<TOutputType>[]> => {
-      const scheduler = createScheduler();
+      const parallel = Math.max(1, recognizesOptions.parallel ?? DEFAULT_PARALLEL);
+      const active = await ensureScheduler(Math.min(inputs.length, parallel));
       try {
-        const parallel = recognizesOptions.parallel || 4;
-        const workerCount = Math.min(inputs.length, parallel);
-        for (let i = 0; i < workerCount; i++) {
-          const schedulerWorker = await Tesseract.createWorker(
-            tesseractOptions.langs || "eng",
-            tesseractOptions.oem || 1,
-            tesseractOptions,
-          );
-          scheduler.addWorker(schedulerWorker);
-        }
-
-        const results = await Promise.allSettled(
-          inputs.map(async (input) => {
+        const failures: unknown[] = [];
+        const documents = await runWithConcurrency(
+          inputs,
+          Math.min(inputs.length, parallel),
+          async (input) => {
             const imageLike = await toUint8Array(input);
-            const result = await scheduler.addJob(
+            const result = await active.addJob(
               "recognize",
               imageLike,
               {},
@@ -163,28 +182,30 @@ export default function tesseractDriver<TOutputType extends OutputType>(
               },
             );
             return pageToDocument(result.data, imageLike);
-          }),
+          },
+          (reason) => failures.push(reason),
         );
 
         // Surface failures to the caller instead of replacing them with empty
         // documents, which would be indistinguishable from blank pages.
-        const failures = results.filter((result) => result.status === "rejected");
         if (failures.length > 0) {
           throw new AggregateError(
-            failures.map((failure) => (failure as PromiseRejectedResult).reason),
+            failures,
             `OCR failed for ${failures.length} of ${inputs.length} inputs`,
           );
         }
 
-        return results.map(
-          (result) =>
-            formatDocument(
-              (result as PromiseFulfilledResult<OCRDocument>).value,
-              outputType,
-            ) as OCRResult<TOutputType>,
+        return documents.map(
+          (document) => formatDocument(document, outputType) as OCRResult<TOutputType>,
         );
       } finally {
-        await scheduler.terminate();
+        if (!persistWorkers) {
+          const stopping = scheduler;
+          scheduler = null;
+          schedulerWorkers = 0;
+          growing = null;
+          await stopping?.terminate();
+        }
       }
     },
 
@@ -195,6 +216,11 @@ export default function tesseractDriver<TOutputType extends OutputType>(
         const worker = await promise.catch(() => null);
         await worker?.terminate();
       }
+      const stopping = scheduler;
+      scheduler = null;
+      schedulerWorkers = 0;
+      growing = null;
+      await stopping?.terminate();
     },
   };
 }
