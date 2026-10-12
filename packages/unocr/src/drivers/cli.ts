@@ -191,6 +191,8 @@ function run(command: string, args: string[]): Promise<string> {
   });
 }
 
+const LATIN1 = new TextDecoder("latin1");
+
 function detectImageExtension(bytes: Uint8Array): string {
   if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50) return "input.png";
   if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
@@ -198,12 +200,12 @@ function detectImageExtension(bytes: Uint8Array): string {
   }
   if (
     bytes.length >= 12 &&
-    new TextDecoder("latin1").decode(bytes.subarray(0, 4)) === "RIFF" &&
-    new TextDecoder("latin1").decode(bytes.subarray(8, 12)) === "WEBP"
+    LATIN1.decode(bytes.subarray(0, 4)) === "RIFF" &&
+    LATIN1.decode(bytes.subarray(8, 12)) === "WEBP"
   ) {
     return "input.webp";
   }
-  if (bytes.length >= 6 && new TextDecoder("latin1").decode(bytes.subarray(0, 3)) === "GIF") {
+  if (bytes.length >= 6 && LATIN1.decode(bytes.subarray(0, 3)) === "GIF") {
     return "input.gif";
   }
   return "input.bin";

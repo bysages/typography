@@ -19,26 +19,11 @@ type AnyDriver = Driver<OutputType>;
 type BackendFactory = (options: Record<string, unknown>) => AnyDriver;
 
 async function isNativeOcrAvailable(): Promise<boolean> {
-  if (process.platform !== "darwin" && process.platform !== "win32") return false;
-  try {
-    await import("@napi-rs/system-ocr");
-    return true;
-  } catch {
-    return false;
-  }
+  return (await import("./native")).isNativeOcrAvailable();
 }
 
 async function isTesseractCliAvailable(command = "tesseract"): Promise<boolean> {
-  try {
-    const { spawn } = await import("node:child_process");
-    return await new Promise((resolve) => {
-      const child = spawn(command, ["--version"], { stdio: "ignore", windowsHide: true });
-      child.on("error", () => resolve(false));
-      child.on("close", (code) => resolve(code === 0));
-    });
-  } catch {
-    return false;
-  }
+  return (await import("./cli")).isTesseractCliAvailable(command);
 }
 
 async function loadBackend(name: AutoBackend): Promise<BackendFactory> {
