@@ -13,9 +13,19 @@ import type { FontData, FontMetadata, FontOptions, FontGenerateOptions, GlyphDat
 import { convertToOpentypePath } from "./utils";
 
 /**
- * Create font from glyph data using opentype.js
+ * Font options for createFont; also accepts a parsed FontData as the base so
+ * a parse → create → generate sequence can reuse every extracted scalar.
  */
-export function createFont(glyphs: GlyphData[], options: FontOptions): FontData {
+export type CreateFontOptions = Omit<Partial<FontData>, "glyphs"> & {
+  /** Glyph data; defaults to FontData.glyphs when passing a parsed font. */
+  glyphs?: GlyphData[];
+  /** Layout override for FontData.ascent. */
+  ascender?: number;
+  /** Layout override for FontData.descent. */
+  descender?: number;
+};
+
+function buildFontData(glyphs: GlyphData[], options: FontOptions): FontData {
   return {
     familyName: options.familyName,
     styleName: options.styleName,
@@ -33,6 +43,37 @@ export function createFont(glyphs: GlyphData[], options: FontOptions): FontData 
     metadata: options.metadata,
     glyphs,
   };
+}
+
+/**
+ * Create font from glyph data using opentype.js
+ */
+export function createFont(glyphs: GlyphData[], options: FontOptions): FontData;
+export function createFont(input: CreateFontOptions & { glyphs: GlyphData[] }): FontData;
+export function createFont(
+  glyphsOrInput: GlyphData[] | (CreateFontOptions & { glyphs: GlyphData[] }),
+  options?: FontOptions,
+): FontData {
+  if (Array.isArray(glyphsOrInput)) {
+    if (!options) throw new Error("createFont requires font options with a glyph array.");
+    return buildFontData(glyphsOrInput, options);
+  }
+  const { glyphs, ascender, descender, ...rest } = glyphsOrInput;
+  const metadata = rest.metadata ?? {};
+  // Parsed fonts keep copyright/version at the top level; fold them into the
+  // name-table metadata unless the caller supplied their own.
+  if (!rest.metadata) {
+    if (rest.copyright) metadata.copyright = rest.copyright;
+    if (rest.version) metadata.version = rest.version;
+  }
+  return buildFontData(glyphs, {
+    ...rest,
+    familyName: rest.familyName ?? "Untitled Font",
+    styleName: rest.styleName ?? "Regular",
+    ascender: ascender ?? rest.ascent,
+    descender: descender ?? rest.descent,
+    metadata,
+  } as FontOptions);
 }
 
 /**

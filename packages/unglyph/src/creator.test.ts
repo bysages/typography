@@ -176,4 +176,35 @@ describe("round-trip", () => {
     expect(parsed.familyName).toBe("Renamed");
     expect(parsed.postscriptName).toBe("Renamed-Demo");
   });
+
+  it("reuses a parsed font directly as createFont input", async () => {
+    const source = createFont([glyphA], {
+      familyName: "Reuse Font",
+      styleName: "Regular",
+      unitsPerEm: 2000,
+      ascender: 1800,
+      descender: -400,
+      capHeight: 1400,
+      xHeight: 950,
+      metadata: { designer: "BY SAGES", license: "OFL-1.1" },
+    });
+    const bytes = await generateFont(source, { format: "otf" });
+    const parsed = await parseFont(bytes);
+
+    // The parsed result carries the original copyright/version top-level
+    // fields only when the source set them; here metadata flows back as-is.
+    const rebuilt = createFont({ ...parsed });
+    expect(rebuilt.familyName).toBe("Reuse Font");
+    expect(rebuilt.unitsPerEm).toBe(2000);
+    expect(rebuilt.ascent).toBe(1800);
+    expect(rebuilt.descent).toBe(-400);
+    expect(rebuilt.capHeight).toBe(1400);
+    expect(rebuilt.xHeight).toBe(950);
+    expect(rebuilt.metadata?.designer).toBe("BY SAGES");
+
+    const out = await generateFont(rebuilt, { format: "ttf" });
+    const reparsed = await parseFont(out);
+    expect(reparsed.unitsPerEm).toBe(2000);
+    expect(reparsed.metadata?.designer).toBe("BY SAGES");
+  });
 });

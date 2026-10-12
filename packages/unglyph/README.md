@@ -94,7 +94,7 @@ const regular = await subsetFont(variableFontBytes, "Hello world", {
 });
 ```
 
-> `createFont` rebuilds from extracted paths, so it intentionally drops hinting and original layout features. Use `subsetFont` when the output must remain a faithful, shippable font; use creation APIs for generated fonts such as icon and picture fonts. Scalar identity — names, metrics, OS/2 heights and width class, and full name-table metadata — is preserved across a `parseFont` → `createFont` → `generateFont` round trip; variable axes, color tables, and layout features are not rebuilt.
+> `createFont` rebuilds from extracted paths, so it intentionally drops hinting and original layout features. Use `subsetFont` when the output must remain a faithful, shippable font; use creation APIs for generated fonts such as icon and picture fonts. Scalar identity — names, metrics, OS/2 heights and width class, and full name-table metadata — is preserved across a `parseFont` → `createFont` → `generateFont` round trip; variable axes, color tables, and layout features are not rebuilt. Pass the parsed font straight back to rebuild it: `createFont(parsedFont)` keeps every scalar without re-typing fields.
 
 The normalized path model uses SVG direction: `y` increases downward and the baseline is `0`. Node-only image rendering requires installing `@napi-rs/canvas`.
 
