@@ -99,7 +99,19 @@ export function getScriptExtensions(char: string): string[] {
  * Hanb/Jpan/Kore/Hntl writing-system additions applied. Characters whose set
  * contains Common or Inherited resolve to "all".
  */
+const augmentedCache = new Map<number, Set<string> | "all">();
+
 export function getAugmentedScriptSet(char: string): Set<string> | "all" {
+  const cp = singleCodePoint(char).codePointAt(0);
+  if (cp === undefined) return "all";
+  const cached = augmentedCache.get(cp);
+  if (cached) return cached;
+  const computed = computeAugmentedScriptSet(char);
+  augmentedCache.set(cp, computed);
+  return computed;
+}
+
+function computeAugmentedScriptSet(char: string): Set<string> | "all" {
   const raw = getScriptExtensions(char);
   if (raw.includes("Zyyy") || raw.includes("Zinh")) return "all";
 

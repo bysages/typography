@@ -43,12 +43,6 @@ function isDefaultIgnorable(char: string): boolean {
   return cp !== undefined && hasRange(defaultIgnorable.ranges, cp);
 }
 
-function* iterateCodePoints(text: string): Generator<string> {
-  for (const char of text.normalize("NFD")) {
-    yield char;
-  }
-}
-
 function matchesType(record: ConfusableRecord, type: ConfusableType | "all" | undefined): boolean {
   if (!type || type === "all") return true;
   return record.type === type;
@@ -81,7 +75,7 @@ export function singleCodePoint(char: string): string {
  */
 export function skeleton(text: string, options: ConfusablesOptions = {}): string {
   let out = "";
-  for (const char of iterateCodePoints(text.normalize("NFD"))) {
+  for (const char of text.normalize("NFD")) {
     if (isDefaultIgnorable(char)) continue;
     const record = confusables.confusables[char];
     out += record && matchesType(record, options.type) ? record.target : char;
@@ -206,9 +200,16 @@ export function getIdentifierTypes(char: string): IdentifierType[] {
   return hit[2].split(" ") as IdentifierType[];
 }
 
+let intentionalIndex: Map<string, string[]> | null = null;
+
 /** Intentional confusable targets for a character (may be several). */
 export function getIntentionalTargets(char: string): string[] {
-  return intentional.pairs.filter((pair) => pair.source === char).map((pair) => pair.target);
+  intentionalIndex ??= new Map(
+    [...Map.groupBy(intentional.pairs, (pair) => pair.source)].map(
+      ([source, pairs]) => [source, pairs.map((pair) => pair.target)] as const,
+    ),
+  );
+  return intentionalIndex.get(char) ?? [];
 }
 
 /** Detect intentional confusables with positions in the input string. */

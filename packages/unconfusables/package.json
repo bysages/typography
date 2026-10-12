@@ -1,6 +1,6 @@
 {
   "name": "unconfusables",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Unicode confusable detection, spoof checking, identifier profiling, and script analysis based on UTS #39 and UAX #31",
   "keywords": [
     "confusables",

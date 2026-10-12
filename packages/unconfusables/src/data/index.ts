@@ -44,5 +44,5 @@ export function getReverseLookup(dataset: ConfusablesDataset): ReadonlyMap<strin
     }
     reverseCache.set(dataset, lookup);
   }
-  return new Map(lookup);
+  return lookup;
 }
