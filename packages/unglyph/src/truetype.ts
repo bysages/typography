@@ -533,8 +533,6 @@ function buildOs2(options: {
   os2.u16(0); // usDefaultChar
   os2.u16(32); // usBreakChar
   os2.u16(1); // usMaxContext
-  os2.u16(0);
-  os2.u16(0); // lower/upperOpticalPointSize
   return os2.done();
 }
 
