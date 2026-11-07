@@ -63,7 +63,7 @@
   },
   "dependencies": {
     "@types/hast": "3.0.5",
-    "hast-util-from-html": "2.0.3",
+    "hast-util-from-html": "2.1.0",
     "undio": "0.2.0"
   },
   "devDependencies": {
