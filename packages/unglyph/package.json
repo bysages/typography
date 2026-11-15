@@ -59,7 +59,7 @@
     "release": "basis publish"
   },
   "dependencies": {
-    "fontkit": "2.0.4",
+    "fontkit": "3.0.0",
     "harfbuzzjs": "1.6.3",
     "opentype.js": "2.0.0",
     "undio": "0.2.0",
