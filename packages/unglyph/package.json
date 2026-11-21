@@ -60,7 +60,7 @@
   },
   "dependencies": {
     "fontkit": "2.0.4",
-    "harfbuzzjs": "1.6.3",
+    "harfbuzzjs": "1.6.4",
     "opentype.js": "2.0.0",
     "undio": "0.2.0",
     "woff2-encoder": "2.0.0"
